@@ -31,6 +31,11 @@ public class SheepController : MonoBehaviour
     public float minStateTime = 0.3f;
     private float stateTimer = 0f;
 
+    [Header("Obstacle")]
+    public float obstacleCheckDistance = 0.8f;
+
+    private Vector3 fleeFromPosition;
+
     void Start()
     {
         previousState = currentState;
@@ -41,8 +46,8 @@ public class SheepController : MonoBehaviour
     {
         stateTimer += Time.deltaTime;
 
-        HandleState();
         CheckStateTransitions();
+        HandleState();
 
         if (currentState != previousState)
         {
@@ -57,6 +62,12 @@ public class SheepController : MonoBehaviour
 
         currentState = newState;
         stateTimer = 0f;
+
+        if (newState == SheepState.Fleeing && gazeTarget != null)
+        {
+            fleeFromPosition = gazeTarget.position;
+            fleeFromPosition.y = transform.position.y;
+        }
     }
 
     void HandleState()
@@ -128,10 +139,8 @@ public class SheepController : MonoBehaviour
 
     void HandleFleeMovement()
     {
-        if (gazeTarget == null) return;
-
         Vector3 sheepPos = transform.position;
-        Vector3 targetPos = gazeTarget.position;
+        Vector3 targetPos = fleeFromPosition;
         targetPos.y = sheepPos.y;
 
         Vector3 direction = sheepPos - targetPos;
@@ -139,6 +148,9 @@ public class SheepController : MonoBehaviour
         if (direction.sqrMagnitude > 0.001f)
         {
             direction.Normalize();
+
+            if (IsBlocked(direction)) return;
+
             transform.position += direction * fleeSpeed * Time.deltaTime;
             RotateTowards(direction);
         }
@@ -157,9 +169,29 @@ public class SheepController : MonoBehaviour
         if (direction.sqrMagnitude > 0.001f)
         {
             direction.Normalize();
+
+            if (IsBlocked(direction)) return;
+
             transform.position += direction * regroupSpeed * Time.deltaTime;
             RotateTowards(direction);
         }
+    }
+
+    bool IsBlocked(Vector3 direction)
+    {
+        Vector3 origin = transform.position + Vector3.up * 0.5f;
+        RaycastHit hit;
+
+        if (Physics.Raycast(origin, direction, out hit, obstacleCheckDistance))
+        {
+            if (hit.collider.GetComponent<BlockingObstacle>() != null ||
+                hit.collider.GetComponentInParent<BlockingObstacle>() != null)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     void RotateTowards(Vector3 direction)
@@ -181,5 +213,9 @@ public class SheepController : MonoBehaviour
 
         Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(transform.position, fleeStopRadius);
+
+        Gizmos.color = Color.blue;
+        Vector3 origin = transform.position + Vector3.up * 0.5f;
+        Gizmos.DrawLine(origin, origin + transform.forward * obstacleCheckDistance);
     }
 }
