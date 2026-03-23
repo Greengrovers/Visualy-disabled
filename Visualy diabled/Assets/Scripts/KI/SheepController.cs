@@ -32,9 +32,10 @@ public class SheepController : MonoBehaviour
     private float stateTimer = 0f;
 
     [Header("Obstacle")]
-    public float obstacleCheckDistance = 0.8f;
+    public float obstacleCheckDistance = 1.5f;
 
     private Vector3 fleeFromPosition;
+    private float slowMultiplier = 1f;
 
     void Start()
     {
@@ -151,7 +152,7 @@ public class SheepController : MonoBehaviour
 
             if (IsBlocked(direction)) return;
 
-            transform.position += direction * fleeSpeed * Time.deltaTime;
+            transform.position += direction * fleeSpeed * slowMultiplier * Time.deltaTime;
             RotateTowards(direction);
         }
     }
@@ -172,7 +173,7 @@ public class SheepController : MonoBehaviour
 
             if (IsBlocked(direction)) return;
 
-            transform.position += direction * regroupSpeed * Time.deltaTime;
+            transform.position += direction * regroupSpeed * slowMultiplier * Time.deltaTime;
             RotateTowards(direction);
         }
     }
@@ -181,8 +182,9 @@ public class SheepController : MonoBehaviour
     {
         Vector3 origin = transform.position + Vector3.up * 0.5f;
         RaycastHit hit;
+        float sphereRadius = 0.25f;
 
-        if (Physics.Raycast(origin, direction, out hit, obstacleCheckDistance))
+        if (Physics.SphereCast(origin, sphereRadius, direction, out hit, obstacleCheckDistance))
         {
             if (hit.collider.GetComponent<BlockingObstacle>() != null ||
                 hit.collider.GetComponentInParent<BlockingObstacle>() != null)
@@ -206,6 +208,11 @@ public class SheepController : MonoBehaviour
         );
     }
 
+    public void SetSlowMultiplier(float multiplier)
+    {
+        slowMultiplier = multiplier;
+    }
+
     void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.red;
@@ -213,9 +220,5 @@ public class SheepController : MonoBehaviour
 
         Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(transform.position, fleeStopRadius);
-
-        Gizmos.color = Color.blue;
-        Vector3 origin = transform.position + Vector3.up * 0.5f;
-        Gizmos.DrawLine(origin, origin + transform.forward * obstacleCheckDistance);
     }
 }
