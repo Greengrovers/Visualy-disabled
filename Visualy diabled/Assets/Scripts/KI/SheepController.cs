@@ -34,6 +34,10 @@ public class SheepController : MonoBehaviour
     [Header("Obstacle")]
     public float obstacleCheckDistance = 1.5f;
 
+    [Header("Group Behaviour")]
+    [Range(0f, 1f)]
+    public float sharedDirectionInfluence = 0.6f;
+
     private Vector3 fleeFromPosition;
     private float slowMultiplier = 1f;
 
@@ -68,6 +72,14 @@ public class SheepController : MonoBehaviour
         {
             fleeFromPosition = gazeTarget.position;
             fleeFromPosition.y = transform.position.y;
+
+            Vector3 fleeDirection = transform.position - fleeFromPosition;
+            fleeDirection.y = 0f;
+
+            if (fleeDirection.sqrMagnitude > 0.001f && SheepGroupManager.Instance != null)
+            {
+                SheepGroupManager.Instance.SetSharedFleeDirection(fleeDirection.normalized);
+            }
         }
     }
 
@@ -144,16 +156,30 @@ public class SheepController : MonoBehaviour
         Vector3 targetPos = fleeFromPosition;
         targetPos.y = sheepPos.y;
 
-        Vector3 direction = sheepPos - targetPos;
+        Vector3 ownDirection = sheepPos - targetPos;
+        ownDirection.y = 0f;
 
-        if (direction.sqrMagnitude > 0.001f)
+        if (ownDirection.sqrMagnitude > 0.001f)
         {
-            direction.Normalize();
+            ownDirection.Normalize();
 
-            if (IsBlocked(direction)) return;
+            Vector3 finalDirection = ownDirection;
 
-            transform.position += direction * fleeSpeed * slowMultiplier * Time.deltaTime;
-            RotateTowards(direction);
+            if (SheepGroupManager.Instance != null && SheepGroupManager.Instance.hasSharedDirection)
+            {
+                Vector3 sharedDirection = SheepGroupManager.Instance.sharedFleeDirection;
+
+                finalDirection = Vector3.Lerp(
+                    ownDirection,
+                    sharedDirection,
+                    sharedDirectionInfluence
+                ).normalized;
+            }
+
+            if (IsBlocked(finalDirection)) return;
+
+            transform.position += finalDirection * fleeSpeed * slowMultiplier * Time.deltaTime;
+            RotateTowards(finalDirection);
         }
     }
 
@@ -166,6 +192,7 @@ public class SheepController : MonoBehaviour
         targetPos.y = sheepPos.y;
 
         Vector3 direction = targetPos - sheepPos;
+        direction.y = 0f;
 
         if (direction.sqrMagnitude > 0.001f)
         {

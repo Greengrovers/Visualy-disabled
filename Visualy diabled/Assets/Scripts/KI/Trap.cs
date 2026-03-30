@@ -2,35 +2,27 @@ using UnityEngine;
 
 public class Trap : MonoBehaviour
 {
-    [Header("Trap Settings")]
     public float triggerRadius = 1.5f;
     public LayerMask sheepLayer;
 
-    [Header("Optional")]
     public bool destroyTrapAfterUse = false;
-
-    private bool hasTriggered = false;
 
     void Update()
     {
-        if (hasTriggered) return;
-
         Collider[] hits = Physics.OverlapSphere(transform.position, triggerRadius, sheepLayer);
 
-        for (int i = 0; i < hits.Length; i++)
+        foreach (Collider hit in hits)
         {
-            GameObject sheepRoot = hits[i].transform.root.gameObject;
-            TriggerTrap(sheepRoot);
+            // wichtig: Root holen!
+            SheepController sheep = hit.GetComponentInParent<SheepController>();
+
+            if (sheep != null)
+            {
+                Destroy(sheep.gameObject);
+            }
         }
-    }
 
-    void TriggerTrap(GameObject sheepRoot)
-    {
-        hasTriggered = true;
-
-        Destroy(sheepRoot);
-
-        if (destroyTrapAfterUse)
+        if (hits.Length > 0 && destroyTrapAfterUse)
         {
             Destroy(gameObject);
         }
