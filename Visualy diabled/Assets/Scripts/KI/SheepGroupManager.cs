@@ -1,12 +1,11 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 public class SheepGroupManager : MonoBehaviour
 {
     public static SheepGroupManager Instance { get; private set; }
 
-    [Header("Shared Flee Direction")]
-    public Vector3 sharedFleeDirection = Vector3.zero;
-    public bool hasSharedDirection = false;
+    private readonly List<SheepController> allSheep = new List<SheepController>();
 
     private void Awake()
     {
@@ -19,19 +18,46 @@ public class SheepGroupManager : MonoBehaviour
         Instance = this;
     }
 
-    public void SetSharedFleeDirection(Vector3 direction)
+    public void RegisterSheep(SheepController sheep)
     {
-        direction.y = 0f;
-
-        if (direction.sqrMagnitude < 0.001f) return;
-
-        sharedFleeDirection = direction.normalized;
-        hasSharedDirection = true;
+        if (sheep == null) return;
+        if (!allSheep.Contains(sheep))
+        {
+            allSheep.Add(sheep);
+        }
     }
 
-    public void ClearSharedFleeDirection()
+    public void UnregisterSheep(SheepController sheep)
     {
-        sharedFleeDirection = Vector3.zero;
-        hasSharedDirection = false;
+        if (sheep == null) return;
+        allSheep.Remove(sheep);
+    }
+
+    public List<SheepController> GetNearbySheep(SheepController currentSheep, float radius)
+    {
+        List<SheepController> result = new List<SheepController>();
+
+        if (currentSheep == null) return result;
+
+        Vector3 currentPos = currentSheep.transform.position;
+        float radiusSqr = radius * radius;
+
+        for (int i = 0; i < allSheep.Count; i++)
+        {
+            SheepController other = allSheep[i];
+
+            if (other == null) continue;
+            if (other == currentSheep) continue;
+
+            Vector3 diff = other.transform.position - currentPos;
+            diff.y = 0f;
+
+            if (diff.sqrMagnitude <= radiusSqr)
+            {
+                result.Add(other);
+            }
+        }
+
+        return result;
     }
 }

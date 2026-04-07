@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 public enum SheepState
 {
@@ -35,16 +36,44 @@ public class SheepController : MonoBehaviour
     public float obstacleCheckDistance = 1.5f;
 
     [Header("Group Behaviour")]
+    public float neighborRadius = 4f;
+    public float separationRadius = 1.5f;
+
     [Range(0f, 1f)]
-    public float sharedDirectionInfluence = 0.6f;
+    public float alignmentInfluence = 0.35f;
+
+    [Range(0f, 2f)]
+    public float separationInfluence = 0.8f;
 
     private Vector3 fleeFromPosition;
     private float slowMultiplier = 1f;
 
-    void Start()
+    private void OnEnable()
+    {
+        if (SheepGroupManager.Instance != null)
+        {
+            SheepGroupManager.Instance.RegisterSheep(this);
+        }
+    }
+
+    private void Start()
     {
         previousState = currentState;
+
+        if (SheepGroupManager.Instance != null)
+        {
+            SheepGroupManager.Instance.RegisterSheep(this);
+        }
+
         Debug.Log("Start State: " + currentState);
+    }
+
+    private void OnDisable()
+    {
+        if (SheepGroupManager.Instance != null)
+        {
+            SheepGroupManager.Instance.UnregisterSheep(this);
+        }
     }
 
     void Update()
@@ -72,14 +101,6 @@ public class SheepController : MonoBehaviour
         {
             fleeFromPosition = gazeTarget.position;
             fleeFromPosition.y = transform.position.y;
-
-            Vector3 fleeDirection = transform.position - fleeFromPosition;
-            fleeDirection.y = 0f;
-
-            if (fleeDirection.sqrMagnitude > 0.001f && SheepGroupManager.Instance != null)
-            {
-                SheepGroupManager.Instance.SetSharedFleeDirection(fleeDirection.normalized);
-            }
         }
     }
 
@@ -159,28 +180,20 @@ public class SheepController : MonoBehaviour
         Vector3 ownDirection = sheepPos - targetPos;
         ownDirection.y = 0f;
 
-        if (ownDirection.sqrMagnitude > 0.001f)
-        {
-            ownDirection.Normalize();
+        if (ownDirection.sqrMagnitude <= 0.001f) return;
 
-            Vector3 finalDirection = ownDirection;
+        ownDirection.Normalize();
 
-            if (SheepGroupManager.Instance != null && SheepGroupManager.Instance.hasSharedDirection)
-            {
-                Vector3 sharedDirection = SheepGroupManager.Instance.sharedFleeDirection;
+        Vector3 finalDirection = ApplyGroupBehaviour(ownDirection);
 
-                finalDirection = Vector3.Lerp(
-                    ownDirection,
-                    sharedDirection,
-                    sharedDirectionInfluence
-                ).normalized;
-            }
+        if (finalDirection.sqrMagnitude <= 0.001f) return;
 
-            if (IsBlocked(finalDirection)) return;
+        finalDirection.Normalize();
 
-            transform.position += finalDirection * fleeSpeed * slowMultiplier * Time.deltaTime;
-            RotateTowards(finalDirection);
-        }
+        if (IsBlocked(finalDirection)) return;
+
+        transform.position += finalDirection * fleeSpeed * slowMultiplier * Time.deltaTime;
+        RotateTowards(finalDirection);
     }
 
     void HandleRegroupMovement()
@@ -194,15 +207,77 @@ public class SheepController : MonoBehaviour
         Vector3 direction = targetPos - sheepPos;
         direction.y = 0f;
 
-        if (direction.sqrMagnitude > 0.001f)
+        if (direction.sqrMagnitude <= 0.001f) return;
+
+        direction.Normalize();
+
+        Vector3 finalDirection = ApplyGroupBehaviour(direction);
+
+        if (finalDirection.sqrMagnitude <= 0.001f) return;
+
+        finalDirection.Normalize();
+
+        if (IsBlocked(finalDirection)) return;
+
+        transform.position += finalDirection * regroupSpeed * slowMultiplier * Time.deltaTime;
+        RotateTowards(finalDirection);
+    }
+
+    Vector3 ApplyGroupBehaviour(Vector3 baseDirection)
+    {
+        if (SheepGroupManager.Instance == null) return baseDirection;
+
+        List<SheepController> neighbors = SheepGroupManager.Instance.GetNearbySheep(this, neighborRadius);
+
+        if (neighbors.Count == 0) return baseDirection;
+
+        Vector3 alignment = Vector3.zero;
+        Vector3 separation = Vector3.zero;
+
+        Vector3 myPos = transform.position;
+
+        for (int i = 0; i < neighbors.Count; i++)
         {
-            direction.Normalize();
+            SheepController other = neighbors[i];
+            Vector3 toOther = other.transform.position - myPos;
+            toOther.y = 0f;
 
-            if (IsBlocked(direction)) return;
+            float distance = toOther.magnitude;
+            if (distance <= 0.001f) continue;
 
-            transform.position += direction * regroupSpeed * slowMultiplier * Time.deltaTime;
-            RotateTowards(direction);
+            if (other.currentState == SheepState.Fleeing || other.currentState == SheepState.Regrouping)
+            {
+                alignment += other.GetCurrentForwardOnPlane();
+            }
+
+            if (distance < separationRadius)
+            {
+                Vector3 pushAway = (myPos - other.transform.position);
+                pushAway.y = 0f;
+
+                if (pushAway.sqrMagnitude > 0.001f)
+                {
+                    separation += pushAway.normalized * ((separationRadius - distance) / separationRadius);
+                }
+            }
         }
+
+        Vector3 finalDirection = baseDirection;
+
+        if (alignment.sqrMagnitude > 0.001f)
+        {
+            alignment.Normalize();
+            finalDirection += alignment * alignmentInfluence;
+        }
+
+        if (separation.sqrMagnitude > 0.001f)
+        {
+            separation.Normalize();
+            finalDirection += separation * separationInfluence;
+        }
+
+        finalDirection.y = 0f;
+        return finalDirection.normalized;
     }
 
     bool IsBlocked(Vector3 direction)
@@ -240,6 +315,17 @@ public class SheepController : MonoBehaviour
         slowMultiplier = multiplier;
     }
 
+    public Vector3 GetCurrentForwardOnPlane()
+    {
+        Vector3 forward = transform.forward;
+        forward.y = 0f;
+
+        if (forward.sqrMagnitude < 0.001f)
+            return Vector3.zero;
+
+        return forward.normalized;
+    }
+
     void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.red;
@@ -247,5 +333,11 @@ public class SheepController : MonoBehaviour
 
         Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(transform.position, fleeStopRadius);
+
+        Gizmos.color = Color.cyan;
+        Gizmos.DrawWireSphere(transform.position, neighborRadius);
+
+        Gizmos.color = Color.magenta;
+        Gizmos.DrawWireSphere(transform.position, separationRadius);
     }
 }
