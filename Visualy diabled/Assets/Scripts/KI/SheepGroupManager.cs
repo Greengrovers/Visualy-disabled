@@ -5,57 +5,60 @@ public class SheepGroupManager : MonoBehaviour
 {
     public static SheepGroupManager Instance { get; private set; }
 
-    private readonly List<SheepController> allSheep = new List<SheepController>();
+    public List<SheepController> allSheep = new List<SheepController>();
+
+    [Header("Group Regroup")]
+    public bool hasGroupRegroupTarget = false;
+    public Vector3 groupRegroupPosition;
+    public float regroupDistance = 6f;
 
     private void Awake()
     {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-
         Instance = this;
     }
 
     public void RegisterSheep(SheepController sheep)
     {
-        if (sheep == null) return;
         if (!allSheep.Contains(sheep))
-        {
             allSheep.Add(sheep);
-        }
     }
 
     public void UnregisterSheep(SheepController sheep)
     {
-        if (sheep == null) return;
         allSheep.Remove(sheep);
+    }
+
+    public void CreateGroupRegroupTarget(Vector3 sheepPosition, Vector3 fleeDirection)
+    {
+        if (hasGroupRegroupTarget) return;
+
+        fleeDirection.y = 0f;
+
+        if (fleeDirection.sqrMagnitude < 0.001f) return;
+
+        groupRegroupPosition = sheepPosition + fleeDirection.normalized * regroupDistance;
+        hasGroupRegroupTarget = true;
+    }
+
+    public void ClearGroupRegroupTarget()
+    {
+        hasGroupRegroupTarget = false;
     }
 
     public List<SheepController> GetNearbySheep(SheepController currentSheep, float radius)
     {
         List<SheepController> result = new List<SheepController>();
-
-        if (currentSheep == null) return result;
-
-        Vector3 currentPos = currentSheep.transform.position;
         float radiusSqr = radius * radius;
 
-        for (int i = 0; i < allSheep.Count; i++)
+        foreach (SheepController other in allSheep)
         {
-            SheepController other = allSheep[i];
+            if (other == null || other == currentSheep) continue;
 
-            if (other == null) continue;
-            if (other == currentSheep) continue;
-
-            Vector3 diff = other.transform.position - currentPos;
+            Vector3 diff = other.transform.position - currentSheep.transform.position;
             diff.y = 0f;
 
             if (diff.sqrMagnitude <= radiusSqr)
-            {
                 result.Add(other);
-            }
         }
 
         return result;

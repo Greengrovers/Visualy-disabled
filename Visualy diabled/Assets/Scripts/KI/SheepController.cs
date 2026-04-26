@@ -16,12 +16,11 @@ public class SheepController : MonoBehaviour
 
     [Header("Gaze")]
     public Transform gazeTarget;
-    public float fleeStartRadius = 8f;
-    public float fleeStopRadius = 12f;
+    public float fleeStartRadius = 12f;
+    public float fleeStopRadius = 18f;
     public float fleeSpeed = 4f;
 
     [Header("Regroup")]
-    public Transform regroupTarget;
     public float regroupSpeed = 2f;
     public float regroupReachedDistance = 1f;
 
@@ -40,20 +39,24 @@ public class SheepController : MonoBehaviour
     public float separationRadius = 1.5f;
 
     [Range(0f, 1f)]
-    public float alignmentInfluence = 0.35f;
+    public float alignmentInfluence = 0.2f;
 
     [Range(0f, 2f)]
-    public float separationInfluence = 0.8f;
+    public float separationInfluence = 0.9f;
+
+    [Header("Animation")]
+    public sheep_animation_etc sheepAnimation;
+    public string idleAnimationId = "idle";
+    public string runAnimationId = "run";
 
     private Vector3 fleeFromPosition;
+    private Vector3 lastFleeDirection;
     private float slowMultiplier = 1f;
 
     private void OnEnable()
     {
         if (SheepGroupManager.Instance != null)
-        {
             SheepGroupManager.Instance.RegisterSheep(this);
-        }
     }
 
     private void Start()
@@ -61,9 +64,12 @@ public class SheepController : MonoBehaviour
         previousState = currentState;
 
         if (SheepGroupManager.Instance != null)
-        {
             SheepGroupManager.Instance.RegisterSheep(this);
-        }
+
+        if (sheepAnimation == null)
+            sheepAnimation = GetComponentInChildren<sheep_animation_etc>();
+
+        PlayAnimationForState();
 
         Debug.Log("Start State: " + currentState);
     }
@@ -71,9 +77,7 @@ public class SheepController : MonoBehaviour
     private void OnDisable()
     {
         if (SheepGroupManager.Instance != null)
-        {
             SheepGroupManager.Instance.UnregisterSheep(this);
-        }
     }
 
     void Update()
@@ -86,6 +90,7 @@ public class SheepController : MonoBehaviour
         if (currentState != previousState)
         {
             Debug.Log("Neuer State: " + currentState);
+            PlayAnimationForState();
             previousState = currentState;
         }
     }
@@ -101,6 +106,12 @@ public class SheepController : MonoBehaviour
         {
             fleeFromPosition = gazeTarget.position;
             fleeFromPosition.y = transform.position.y;
+
+            lastFleeDirection = transform.position - fleeFromPosition;
+            lastFleeDirection.y = 0f;
+
+            if (lastFleeDirection.sqrMagnitude > 0.001f)
+                lastFleeDirection.Normalize();
         }
     }
 
@@ -144,6 +155,14 @@ public class SheepController : MonoBehaviour
             case SheepState.Fleeing:
                 if (distanceToGaze > fleeStopRadius)
                 {
+                    if (SheepGroupManager.Instance != null)
+                    {
+                        SheepGroupManager.Instance.CreateGroupRegroupTarget(
+                            transform.position,
+                            lastFleeDirection
+                        );
+                    }
+
                     ChangeState(SheepState.Regrouping);
                 }
                 break;
@@ -155,12 +174,13 @@ public class SheepController : MonoBehaviour
                     break;
                 }
 
-                if (regroupTarget != null)
+                if (SheepGroupManager.Instance != null &&
+                    SheepGroupManager.Instance.hasGroupRegroupTarget)
                 {
-                    Vector3 regroupPos = regroupTarget.position;
-                    regroupPos.y = sheepPos.y;
+                    Vector3 targetPos = SheepGroupManager.Instance.groupRegroupPosition;
+                    targetPos.y = sheepPos.y;
 
-                    float distanceToGroup = Vector3.Distance(sheepPos, regroupPos);
+                    float distanceToGroup = Vector3.Distance(sheepPos, targetPos);
 
                     if (distanceToGroup < regroupReachedDistance)
                     {
@@ -184,7 +204,7 @@ public class SheepController : MonoBehaviour
 
         ownDirection.Normalize();
 
-        Vector3 finalDirection = ApplyGroupBehaviour(ownDirection);
+        Vector3 finalDirection = ApplyGroupBehaviour(ownDirection, true);
 
         if (finalDirection.sqrMagnitude <= 0.001f) return;
 
@@ -198,10 +218,11 @@ public class SheepController : MonoBehaviour
 
     void HandleRegroupMovement()
     {
-        if (regroupTarget == null) return;
+        if (SheepGroupManager.Instance == null) return;
+        if (!SheepGroupManager.Instance.hasGroupRegroupTarget) return;
 
         Vector3 sheepPos = transform.position;
-        Vector3 targetPos = regroupTarget.position;
+        Vector3 targetPos = SheepGroupManager.Instance.groupRegroupPosition;
         targetPos.y = sheepPos.y;
 
         Vector3 direction = targetPos - sheepPos;
@@ -211,7 +232,7 @@ public class SheepController : MonoBehaviour
 
         direction.Normalize();
 
-        Vector3 finalDirection = ApplyGroupBehaviour(direction);
+        Vector3 finalDirection = ApplyGroupBehaviour(direction, false);
 
         if (finalDirection.sqrMagnitude <= 0.001f) return;
 
@@ -223,48 +244,50 @@ public class SheepController : MonoBehaviour
         RotateTowards(finalDirection);
     }
 
-    Vector3 ApplyGroupBehaviour(Vector3 baseDirection)
+    Vector3 ApplyGroupBehaviour(Vector3 baseDirection, bool useAlignment)
     {
         if (SheepGroupManager.Instance == null) return baseDirection;
 
-        List<SheepController> neighbors = SheepGroupManager.Instance.GetNearbySheep(this, neighborRadius);
+        List<SheepController> neighbors =
+            SheepGroupManager.Instance.GetNearbySheep(this, neighborRadius);
 
         if (neighbors.Count == 0) return baseDirection;
 
         Vector3 alignment = Vector3.zero;
         Vector3 separation = Vector3.zero;
-
         Vector3 myPos = transform.position;
 
-        for (int i = 0; i < neighbors.Count; i++)
+        foreach (SheepController other in neighbors)
         {
-            SheepController other = neighbors[i];
+            if (other == null) continue;
+
             Vector3 toOther = other.transform.position - myPos;
             toOther.y = 0f;
 
             float distance = toOther.magnitude;
             if (distance <= 0.001f) continue;
 
-            if (other.currentState == SheepState.Fleeing || other.currentState == SheepState.Regrouping)
+            if (useAlignment && other.currentState == SheepState.Fleeing)
             {
                 alignment += other.GetCurrentForwardOnPlane();
             }
 
             if (distance < separationRadius)
             {
-                Vector3 pushAway = (myPos - other.transform.position);
+                Vector3 pushAway = myPos - other.transform.position;
                 pushAway.y = 0f;
 
                 if (pushAway.sqrMagnitude > 0.001f)
                 {
-                    separation += pushAway.normalized * ((separationRadius - distance) / separationRadius);
+                    separation += pushAway.normalized *
+                                  ((separationRadius - distance) / separationRadius);
                 }
             }
         }
 
         Vector3 finalDirection = baseDirection;
 
-        if (alignment.sqrMagnitude > 0.001f)
+        if (useAlignment && alignment.sqrMagnitude > 0.001f)
         {
             alignment.Normalize();
             finalDirection += alignment * alignmentInfluence;
@@ -284,9 +307,8 @@ public class SheepController : MonoBehaviour
     {
         Vector3 origin = transform.position + Vector3.up * 0.5f;
         RaycastHit hit;
-        float sphereRadius = 0.25f;
 
-        if (Physics.SphereCast(origin, sphereRadius, direction, out hit, obstacleCheckDistance))
+        if (Physics.SphereCast(origin, 0.25f, direction, out hit, obstacleCheckDistance))
         {
             if (hit.collider.GetComponent<BlockingObstacle>() != null ||
                 hit.collider.GetComponentInParent<BlockingObstacle>() != null)
@@ -303,6 +325,7 @@ public class SheepController : MonoBehaviour
         if (direction.sqrMagnitude < 0.001f) return;
 
         Quaternion targetRotation = Quaternion.LookRotation(direction, Vector3.up);
+
         transform.rotation = Quaternion.Slerp(
             transform.rotation,
             targetRotation,
@@ -310,9 +333,31 @@ public class SheepController : MonoBehaviour
         );
     }
 
+    void PlayAnimationForState()
+    {
+        if (sheepAnimation == null) return;
+
+        switch (currentState)
+        {
+            case SheepState.Wandering:
+                sheepAnimation.Play(idleAnimationId);
+                break;
+
+            case SheepState.Fleeing:
+            case SheepState.Regrouping:
+                sheepAnimation.Play(runAnimationId);
+                break;
+        }
+    }
+
     public void SetSlowMultiplier(float multiplier)
     {
         slowMultiplier = multiplier;
+
+        if (sheepAnimation != null)
+        {
+            sheepAnimation.SetSpeedMultiplier(multiplier);
+        }
     }
 
     public Vector3 GetCurrentForwardOnPlane()
@@ -320,10 +365,7 @@ public class SheepController : MonoBehaviour
         Vector3 forward = transform.forward;
         forward.y = 0f;
 
-        if (forward.sqrMagnitude < 0.001f)
-            return Vector3.zero;
-
-        return forward.normalized;
+        return forward.sqrMagnitude > 0.001f ? forward.normalized : Vector3.zero;
     }
 
     void OnDrawGizmosSelected()
