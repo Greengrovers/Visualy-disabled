@@ -3035,6 +3035,10 @@ PrefabInstance:
       propertyPath: m_Size.z
       value: 6
       objectReference: {fileID: 0}
+    - target: {fileID: 6199145237769512993, guid: 081c58039ef389b4681a3a5666019929, type: 3}
+      propertyPath: m_Enabled
+      value: 1
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

@@ -185,6 +185,8 @@ public class SheepController : MonoBehaviour
                     if (distanceToGroup < regroupReachedDistance)
                     {
                         ChangeState(SheepState.Wandering);
+
+                        SheepGroupManager.Instance.TryClearRegroupTargetIfAllFinished();
                     }
                 }
                 break;

@@ -40,6 +40,23 @@ public class SheepGroupManager : MonoBehaviour
         hasGroupRegroupTarget = true;
     }
 
+    public void TryClearRegroupTargetIfAllFinished()
+    {
+        if (!hasGroupRegroupTarget) return;
+
+        foreach (SheepController sheep in allSheep)
+        {
+            if (sheep == null) continue;
+
+            if (sheep.currentState == SheepState.Regrouping)
+            {
+                return;
+            }
+        }
+
+        ClearGroupRegroupTarget();
+    }
+
     public void ClearGroupRegroupTarget()
     {
         hasGroupRegroupTarget = false;
