@@ -25,7 +25,26 @@ public class GoalArea : MonoBehaviour
                 ScoreManager.Instance.AddSheepScore();
             }
 
-            Destroy(sheepRoot);
+            SheepController sheep = sheepRoot.GetComponent<SheepController>();
+            if (sheep != null)
+            {
+                sheep.isInGoal = true;
+                sheep.enabled = false;
+            }
+
+            var agent = sheepRoot.GetComponent<UnityEngine.AI.NavMeshAgent>();
+            if (agent != null)
+            {
+                agent.isStopped = true;
+            }
+
+            Rigidbody rb = sheepRoot.GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+                rb.isKinematic = true;
+            }
         }
     }
 

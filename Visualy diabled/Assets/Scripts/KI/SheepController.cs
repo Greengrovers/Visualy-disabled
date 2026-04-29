@@ -33,6 +33,7 @@ public class SheepController : MonoBehaviour
 
     [Header("Obstacle")]
     public float obstacleCheckDistance = 1.5f;
+    public bool isInGoal = false;
 
     [Header("Group Behaviour")]
     public float neighborRadius = 4f;
