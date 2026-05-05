@@ -1,6 +1,7 @@
 using UnityEngine;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 public class sheep_animation_etc : MonoBehaviour
 {
@@ -13,26 +14,51 @@ public class sheep_animation_etc : MonoBehaviour
         public bool loop = true;
     }
 
+    [Serializable]
+    public class ColorGroup
+    {
+        public string id = "default";
+        public FrameAnimationClip[] clips;
+    }
+
     [Header("Renderer")]
     [Tooltip("If empty, uses Renderer on this GameObject.")]
     [SerializeField] private Renderer targetRenderer;
 
-    [Header("Clips")]
+    [Header("Legacy Clips (Auto-Migrated)")]
     [SerializeField] private FrameAnimationClip[] clips;
     [SerializeField] private string initialClip = "idle";
     [SerializeField] private bool randomizeInitialFrame = true;
+
+    [Header("Color Groups")]
+    [SerializeField] private ColorGroup[] colorGroups;
+    [Tooltip("Keeps the chosen color group when this object is disabled and re-enabled.")]
+    [SerializeField] private bool keepColorGroupOnReenable = true;
 
     [Header("Playback")]
     [SerializeField] private float speedMultiplier = 1f;
     [Tooltip("If true, animation ignores Time.timeScale and always runs in real time.")]
     [SerializeField] private bool ignoreTimeScale = false;
 
+    [Header("State Sync (Optional)")]
+    [Tooltip("If enabled, this animator follows SheepController state from a parent object.")]
+    [SerializeField] private bool syncWithSheepController = true;
+    [SerializeField] private SheepController sheepController;
+    [SerializeField] private string wanderingClipId = "idle";
+    [SerializeField] private string fleeingClipId = "run";
+    [SerializeField] private string regroupingClipId = "run";
+
     private readonly Dictionary<string, int> clipLookup = new Dictionary<string, int>();
     private MaterialPropertyBlock propertyBlock;
+    private FrameAnimationClip[] activeClipSet;
     private FrameAnimationClip currentClip;
     private int currentFrame;
     private float frameTimer;
     private bool hasValidClip;
+    private bool hasSyncedState;
+    private SheepState lastSyncedState;
+    private int selectedColorGroupIndex = -1;
+    private bool hasSelectedColorGroup;
 
     // Works with both built-in and URP/HDRP shader property names.
     private static readonly int MainTexId = Shader.PropertyToID("_MainTex");
@@ -45,17 +71,40 @@ public class sheep_animation_etc : MonoBehaviour
             targetRenderer = GetComponent<Renderer>();
         }
 
+        if (sheepController == null)
+        {
+            sheepController = GetComponentInParent<SheepController>();
+        }
+
         propertyBlock = new MaterialPropertyBlock();
+        MigrateLegacyClipsToBrownGroup();
+        EnsureColorGroupSelected();
         BuildLookup();
     }
 
     private void OnEnable()
     {
-        Play(initialClip, true);
+        MigrateLegacyClipsToBrownGroup();
+        EnsureColorGroupSelected();
+        BuildLookup();
+
+        if (syncWithSheepController && sheepController != null)
+        {
+            SyncWithState(true);
+        }
+        else
+        {
+            Play(initialClip, true);
+        }
     }
 
     private void Update()
     {
+        if (syncWithSheepController)
+        {
+            SyncWithState(false);
+        }
+
         if (!hasValidClip || currentClip == null || currentClip.frames == null || currentClip.frames.Length == 0)
         {
             return;
@@ -79,13 +128,19 @@ public class sheep_animation_etc : MonoBehaviour
 
     public bool Play(string clipId, bool restartIfSame = false)
     {
+        if (activeClipSet == null || activeClipSet.Length == 0)
+        {
+            hasValidClip = false;
+            return false;
+        }
+
         if (string.IsNullOrWhiteSpace(clipId) || !clipLookup.TryGetValue(clipId, out int clipIndex))
         {
             hasValidClip = false;
             return false;
         }
 
-        FrameAnimationClip nextClip = clips[clipIndex];
+        FrameAnimationClip nextClip = activeClipSet[clipIndex];
         if (nextClip == null || nextClip.frames == null || nextClip.frames.Length == 0)
         {
             hasValidClip = false;
@@ -168,14 +223,15 @@ public class sheep_animation_etc : MonoBehaviour
     {
         clipLookup.Clear();
 
-        if (clips == null)
+        activeClipSet = GetActiveClipSet();
+        if (activeClipSet == null)
         {
             return;
         }
 
-        for (int i = 0; i < clips.Length; i++)
+        for (int i = 0; i < activeClipSet.Length; i++)
         {
-            FrameAnimationClip clip = clips[i];
+            FrameAnimationClip clip = activeClipSet[i];
             if (clip == null || string.IsNullOrWhiteSpace(clip.id))
             {
                 continue;
@@ -188,16 +244,222 @@ public class sheep_animation_etc : MonoBehaviour
         }
     }
 
-    private void OnValidate()
+    private FrameAnimationClip[] GetActiveClipSet()
     {
-        if (clips == null)
+        if (colorGroups == null || colorGroups.Length == 0)
+        {
+            return null;
+        }
+
+        if (selectedColorGroupIndex < 0 || selectedColorGroupIndex >= colorGroups.Length)
+        {
+            return null;
+        }
+
+        ColorGroup selectedGroup = colorGroups[selectedColorGroupIndex];
+        if (selectedGroup == null || selectedGroup.clips == null || selectedGroup.clips.Length == 0)
+        {
+            return null;
+        }
+
+        return selectedGroup.clips;
+    }
+
+    private void EnsureColorGroupSelected()
+    {
+        int[] validGroupIndices = GetValidGroupIndices();
+        if (validGroupIndices.Length == 0)
+        {
+            selectedColorGroupIndex = -1;
+            hasSelectedColorGroup = false;
+            return;
+        }
+
+        if (hasSelectedColorGroup && keepColorGroupOnReenable)
         {
             return;
         }
 
-        for (int i = 0; i < clips.Length; i++)
+        selectedColorGroupIndex = validGroupIndices[UnityEngine.Random.Range(0, validGroupIndices.Length)];
+
+        hasSelectedColorGroup = true;
+    }
+
+    private int[] GetValidGroupIndices()
+    {
+        if (colorGroups == null)
         {
-            FrameAnimationClip clip = clips[i];
+            return Array.Empty<int>();
+        }
+
+        List<int> valid = new List<int>();
+
+        for (int i = 0; i < colorGroups.Length; i++)
+        {
+            ColorGroup group = colorGroups[i];
+            if (group != null && group.clips != null && group.clips.Length > 0)
+            {
+                valid.Add(i);
+            }
+        }
+
+        return valid.ToArray();
+    }
+
+    private void MigrateLegacyClipsToBrownGroup()
+    {
+        if (clips == null || clips.Length == 0)
+        {
+            return;
+        }
+
+        if (colorGroups == null)
+        {
+            colorGroups = Array.Empty<ColorGroup>();
+        }
+
+        int brownIndex = -1;
+        for (int i = 0; i < colorGroups.Length; i++)
+        {
+            ColorGroup group = colorGroups[i];
+            if (group == null || string.IsNullOrWhiteSpace(group.id))
+            {
+                continue;
+            }
+
+            if (group.id.Trim().ToLowerInvariant() == "brown")
+            {
+                brownIndex = i;
+                break;
+            }
+        }
+
+        if (brownIndex < 0)
+        {
+            ColorGroup brownGroup = new ColorGroup
+            {
+                id = "brown",
+                clips = clips
+            };
+
+            List<ColorGroup> expanded = new List<ColorGroup>(colorGroups.Where(g => g != null));
+            expanded.Insert(0, brownGroup);
+            colorGroups = expanded.ToArray();
+        }
+        else
+        {
+            ColorGroup brownGroup = colorGroups[brownIndex];
+            if (brownGroup.clips == null || brownGroup.clips.Length == 0)
+            {
+                brownGroup.clips = clips;
+            }
+            else
+            {
+                Dictionary<string, FrameAnimationClip> merged = new Dictionary<string, FrameAnimationClip>();
+
+                for (int i = 0; i < brownGroup.clips.Length; i++)
+                {
+                    FrameAnimationClip clip = brownGroup.clips[i];
+                    if (clip == null || string.IsNullOrWhiteSpace(clip.id))
+                    {
+                        continue;
+                    }
+                    string key = clip.id.Trim().ToLowerInvariant();
+                    if (!merged.ContainsKey(key))
+                    {
+                        merged.Add(key, clip);
+                    }
+                }
+
+                for (int i = 0; i < clips.Length; i++)
+                {
+                    FrameAnimationClip clip = clips[i];
+                    if (clip == null || string.IsNullOrWhiteSpace(clip.id))
+                    {
+                        continue;
+                    }
+                    string key = clip.id.Trim().ToLowerInvariant();
+                    if (!merged.ContainsKey(key))
+                    {
+                        merged.Add(key, clip);
+                    }
+                }
+
+                brownGroup.clips = new List<FrameAnimationClip>(merged.Values).ToArray();
+            }
+
+            colorGroups[brownIndex] = brownGroup;
+        }
+
+        clips = Array.Empty<FrameAnimationClip>();
+    }
+
+    private void SyncWithState(bool force)
+    {
+        if (sheepController == null)
+        {
+            sheepController = GetComponentInParent<SheepController>();
+            if (sheepController == null)
+            {
+                return;
+            }
+        }
+
+        SheepState state = sheepController.currentState;
+        if (!force && hasSyncedState && state == lastSyncedState)
+        {
+            return;
+        }
+
+        switch (state)
+        {
+            case SheepState.Wandering:
+                Play(wanderingClipId, false);
+                break;
+            case SheepState.Fleeing:
+                Play(fleeingClipId, false);
+                break;
+            case SheepState.Regrouping:
+                Play(regroupingClipId, false);
+                break;
+        }
+
+        lastSyncedState = state;
+        hasSyncedState = true;
+    }
+
+    private void OnValidate()
+    {
+        MigrateLegacyClipsToBrownGroup();
+        ValidateClipArray(clips);
+
+        if (colorGroups == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < colorGroups.Length; i++)
+        {
+            ColorGroup group = colorGroups[i];
+            if (group == null)
+            {
+                continue;
+            }
+
+            ValidateClipArray(group.clips);
+        }
+    }
+
+    private void ValidateClipArray(FrameAnimationClip[] clipArray)
+    {
+        if (clipArray == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < clipArray.Length; i++)
+        {
+            FrameAnimationClip clip = clipArray[i];
             if (clip == null || string.IsNullOrWhiteSpace(clip.id))
             {
                 continue;

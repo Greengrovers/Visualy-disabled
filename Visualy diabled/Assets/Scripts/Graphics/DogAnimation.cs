@@ -27,12 +27,29 @@ public class DogAnimation : MonoBehaviour
     [Tooltip("If true, animation ignores Time.timeScale and always runs in real time.")]
     [SerializeField] private bool ignoreTimeScale = false;
 
+    [Header("State From Gaze Movement")]
+    [Tooltip("Automatically switches between run/idle based on gaze movement speed.")]
+    [SerializeField] private bool useGazeMovementState = true;
+    [Tooltip("Optional: assign the 'Dog Trigger for Gaze' transform with GazeWorldTarget.")]
+    [SerializeField] private Transform gazeMovementSource;
+    [SerializeField] private string idleClipId = "idle";
+    [SerializeField] private string runClipId = "run";
+    [Min(0f)] [SerializeField] private float idleAfterSeconds = 2f;
+    [Min(0f)] [SerializeField] private float worldMovementThreshold = 0.01f;
+    [Min(0f)] [SerializeField] private float gazeMovementThreshold = 0.004f;
+
     private readonly Dictionary<string, int> clipLookup = new Dictionary<string, int>();
     private MaterialPropertyBlock propertyBlock;
     private FrameAnimationClip currentClip;
     private int currentFrame;
     private float frameTimer;
     private bool hasValidClip;
+    private Vector3 lastMovementSourcePosition;
+    private bool hasLastMovementSourcePosition;
+    private Vector2 lastGazeViewport;
+    private bool hasLastGazeViewport;
+    private float noGazeMovementTimer;
+    private bool isIdleFromGaze;
 
     private static readonly int MainTexId = Shader.PropertyToID("_MainTex");
     private static readonly int BaseMapId = Shader.PropertyToID("_BaseMap");
@@ -44,17 +61,33 @@ public class DogAnimation : MonoBehaviour
             targetRenderer = GetComponent<Renderer>();
         }
 
+        if (gazeMovementSource == null)
+        {
+            GazeWorldTarget worldTarget = FindFirstObjectByType<GazeWorldTarget>();
+            if (worldTarget != null)
+            {
+                gazeMovementSource = worldTarget.transform;
+            }
+        }
+
         propertyBlock = new MaterialPropertyBlock();
         BuildLookup();
     }
 
     private void OnEnable()
     {
+        hasLastMovementSourcePosition = false;
+        hasLastGazeViewport = false;
+        noGazeMovementTimer = 0f;
+        isIdleFromGaze = false;
+
         Play(initialClip, true);
     }
 
     private void Update()
     {
+        UpdateStateFromGazeMovement();
+
         if (!hasValidClip || currentClip == null || currentClip.frames == null || currentClip.frames.Length == 0)
         {
             return;
@@ -184,6 +217,117 @@ public class DogAnimation : MonoBehaviour
             {
                 clipLookup.Add(clip.id, i);
             }
+        }
+    }
+
+    private void UpdateStateFromGazeMovement()
+    {
+        if (!useGazeMovementState)
+        {
+            return;
+        }
+
+        float dt = ignoreTimeScale ? Time.unscaledDeltaTime : Time.deltaTime;
+
+        if (gazeMovementSource == null)
+        {
+            GazeWorldTarget worldTarget = FindFirstObjectByType<GazeWorldTarget>();
+            if (worldTarget != null)
+            {
+                gazeMovementSource = worldTarget.transform;
+            }
+        }
+
+        if (gazeMovementSource != null)
+        {
+            Vector3 currentPosition = gazeMovementSource.position;
+            if (!hasLastMovementSourcePosition)
+            {
+                hasLastMovementSourcePosition = true;
+                lastMovementSourcePosition = currentPosition;
+                noGazeMovementTimer = 0f;
+                TrySwitchToRun();
+                return;
+            }
+
+            float movementSqrWorld = (currentPosition - lastMovementSourcePosition).sqrMagnitude;
+            float thresholdSqrWorld = worldMovementThreshold * worldMovementThreshold;
+
+            if (movementSqrWorld >= thresholdSqrWorld)
+            {
+                noGazeMovementTimer = 0f;
+                TrySwitchToRun();
+            }
+            else
+            {
+                noGazeMovementTimer += dt;
+                TrySwitchToIdle();
+            }
+
+            lastMovementSourcePosition = currentPosition;
+            return;
+        }
+
+        Vector2 currentViewport;
+        bool hasValidGaze = TobiiManager.Instance != null && TobiiManager.Instance.HasValidGazeData;
+
+        if (!hasValidGaze)
+        {
+            noGazeMovementTimer += dt;
+            TrySwitchToIdle();
+            return;
+        }
+
+        currentViewport = TobiiManager.Instance.GazePointViewport;
+        if (!hasLastGazeViewport)
+        {
+            hasLastGazeViewport = true;
+            lastGazeViewport = currentViewport;
+            noGazeMovementTimer = 0f;
+            TrySwitchToRun();
+            return;
+        }
+
+        float movementSqr = (currentViewport - lastGazeViewport).sqrMagnitude;
+        float thresholdSqr = gazeMovementThreshold * gazeMovementThreshold;
+
+        if (movementSqr >= thresholdSqr)
+        {
+            noGazeMovementTimer = 0f;
+            TrySwitchToRun();
+        }
+        else
+        {
+            noGazeMovementTimer += dt;
+            TrySwitchToIdle();
+        }
+
+        lastGazeViewport = currentViewport;
+    }
+
+    private void TrySwitchToIdle()
+    {
+        if (isIdleFromGaze || noGazeMovementTimer < idleAfterSeconds)
+        {
+            return;
+        }
+
+        if (Play(idleClipId, false))
+        {
+            isIdleFromGaze = true;
+        }
+    }
+
+    private void TrySwitchToRun()
+    {
+        if (!isIdleFromGaze)
+        {
+            return;
+        }
+
+        if (Play(runClipId, false))
+        {
+            isIdleFromGaze = false;
         }
     }
 

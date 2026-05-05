@@ -27,7 +27,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0.08715578, y: 0, z: 0, w: 0.9961947}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0.0055096415, y: 0.009947591, z: 0.008737271}
+  m_LocalScale: {x: 0.0074773924, y: 0.013500341, z: 0.011857758}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1494329256929200354}
@@ -75,7 +75,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: -1, z: 0, w: 0}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 89.66228, y: 49.660965, z: 48.76591}
+  m_LocalScale: {x: 95.21237, y: 52.73498, z: 51.784523}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 830727718314468640}
@@ -191,8 +191,63 @@ MonoBehaviour:
     loop: 1
   initialClip: idle
   randomizeInitialFrame: 1
+  useColorGroups: 1
+  includeBaseClipsAsGroup: 0
+  colorGroups:
+  - id: emo
+    clips:
+    - id: idle
+      frames:
+      - {fileID: 2800000, guid: bb2b5454fe3e94f9ebad50ee5737c516, type: 3}
+      - {fileID: 2800000, guid: 446cca85d768f4c49bd671b3b713230d, type: 3}
+      - {fileID: 2800000, guid: 3c3ed75759bde46cfb15e895d40b0168, type: 3}
+      - {fileID: 2800000, guid: 00f83461e7d2c4a4497018ac364564af, type: 3}
+      - {fileID: 2800000, guid: 3d3d39e15ed2d4cf98997f4a3af319d8, type: 3}
+      - {fileID: 2800000, guid: dadef25feb4b24e6cbbca08a14b187b5, type: 3}
+      - {fileID: 2800000, guid: 0e9e9c10a58554961a76bd4b97c351eb, type: 3}
+      - {fileID: 2800000, guid: 459bb5e78552d4f2c9ed90916a794297, type: 3}
+      fps: 5
+      loop: 1
+    - id: run
+      frames:
+      - {fileID: 2800000, guid: fd9e613a580c94e279c6b61b642e8dcf, type: 3}
+      - {fileID: 2800000, guid: d657f487bd395495883d1c750940834f, type: 3}
+      - {fileID: 2800000, guid: bab24ccd3debd4aeeba999f5ca71c0b7, type: 3}
+      - {fileID: 2800000, guid: a1af012d03e304fd4b66eed377b5bf46, type: 3}
+      fps: 5
+      loop: 1
+  - id: whiteBoiNooo
+    clips:
+    - id: idle
+      frames:
+      - {fileID: 2800000, guid: 76c5920fd9c1b4f6683a01b1cd3e26a2, type: 3}
+      - {fileID: 2800000, guid: 0c184c26cc4494b8390254c32ab5a9d8, type: 3}
+      - {fileID: 2800000, guid: 89d766b2b295644f1912700ca4ac74c1, type: 3}
+      - {fileID: 2800000, guid: 1d21682f934f543bfa19e518e07590c5, type: 3}
+      - {fileID: 2800000, guid: 3606e7c99e99a4475bef3524ee51ed46, type: 3}
+      - {fileID: 2800000, guid: 8a81c242705ea477686aac35b2744a97, type: 3}
+      - {fileID: 2800000, guid: e7ccba21247b24c72b403698e2194732, type: 3}
+      - {fileID: 2800000, guid: 4c11ae8ecb7ae4ad995bbc54dd3de3d6, type: 3}
+      fps: 5
+      loop: 1
+    - id: run
+      frames:
+      - {fileID: 2800000, guid: c551054ce96be4cbf8911414d4c45a8d, type: 3}
+      - {fileID: 2800000, guid: 1365ed8d7ce3f464c845690a37be61fb, type: 3}
+      - {fileID: 2800000, guid: bf12ce44b344b4204a5462348adafc31, type: 3}
+      - {fileID: 2800000, guid: d066f0b8894324e66a0a291f78d2ba35, type: 3}
+      fps: 5
+      loop: 1
+  randomizeColorGroup: 1
+  fixedColorGroupIndex: 0
+  keepColorGroupOnReenable: 1
   speedMultiplier: 1
   ignoreTimeScale: 0
+  syncWithSheepController: 1
+  sheepController: {fileID: 0}
+  wanderingClipId: idle
+  fleeingClipId: run
+  regroupingClipId: run
 --- !u!1 &8592932819243796918
 GameObject:
   m_ObjectHideFlags: 0
@@ -222,7 +277,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0.08715578, y: 0, z: 0, w: 0.9961947}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 1.1768, y: 1.1768, z: 1.1768}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 4168309475812382241}
@@ -251,6 +306,7 @@ MonoBehaviour:
   rotationSpeed: 8
   minStateTime: 0.3
   obstacleCheckDistance: 1.5
+  isInGoal: 0
   neighborRadius: 4
   separationRadius: 1.5
   alignmentInfluence: 0.35
@@ -368,6 +424,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   maxDistance: 10
+  minInterval: 2
+  maxInterval: 5
 --- !u!1001 &4490781655250530762
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -563,6 +621,7 @@ MonoBehaviour:
   rotationSpeed: 8
   minStateTime: 0.3
   obstacleCheckDistance: 1.5
+  isInGoal: 0
   neighborRadius: 4
   separationRadius: 1.5
   alignmentInfluence: 0.35

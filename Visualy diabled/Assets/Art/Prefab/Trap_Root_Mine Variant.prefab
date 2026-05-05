@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 3148906590905433380}
   - component: {fileID: 824629525907947858}
   - component: {fileID: 8738667895532493559}
+  - component: {fileID: 759212791836794757}
   m_Layer: 0
   m_Name: Mine_2D
   m_TagString: Untagged
@@ -27,13 +28,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 809924374365888855}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalRotation: {x: 0, y: 1, z: 0, w: 0}
   m_LocalPosition: {x: 0, y: 0.20456171, z: 0}
   m_LocalScale: {x: 0.24424636, y: 0.24424636, z: 0.24424636}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 3766329382837530913}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 180, z: 0}
 --- !u!33 &3148906590905433380
 MeshFilter:
   m_ObjectHideFlags: 0
@@ -109,6 +110,36 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 10209, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &759212791836794757
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 809924374365888855}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1597a9ede5767414abd373c2682ea3ee, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetRenderer: {fileID: 824629525907947858}
+  explosionClip:
+    id: explode
+    frames:
+    - {fileID: 2800000, guid: 6e8cbaa6cb91b4521a547b934063a668, type: 3}
+    - {fileID: 2800000, guid: fc85b8b0d3eb948c4bf29099c5348b7c, type: 3}
+    - {fileID: 2800000, guid: cfd17639188f7470786bea9d8096eb49, type: 3}
+    - {fileID: 2800000, guid: c0fd3a521dc1c461781853b0e5e0f9b3, type: 3}
+    - {fileID: 2800000, guid: 00c8363a00f79440781e2a9717567e62, type: 3}
+    - {fileID: 2800000, guid: 936a50492d1b54d11a91778a09a4816b, type: 3}
+    - {fileID: 2800000, guid: f2f1f688a51a04a0b9f9296040d3028e, type: 3}
+    - {fileID: 2800000, guid: 5323222492feb448da8edbe23400ac48, type: 3}
+    fps: 5
+    loop: 0
+  randomizeInitialFrame: 0
+  autoTriggerFromMines: 1
+  hideStaticMineWhenTriggered: 1
+  destroyAfterAnimation: 1
 --- !u!1001 &5228604217864535801
 PrefabInstance:
   m_ObjectHideFlags: 0

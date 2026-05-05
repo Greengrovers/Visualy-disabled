@@ -632,7 +632,7 @@ RectTransform:
   - {fileID: 694337635}
   - {fileID: 63391696}
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 90, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
@@ -1552,7 +1552,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6197438398489364577, guid: 158503964f8e5a44bbbcb1a6bb4e8f83, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -1.93
+      value: -0.77000004
       objectReference: {fileID: 0}
     - target: {fileID: 6197438398489364577, guid: 158503964f8e5a44bbbcb1a6bb4e8f83, type: 3}
       propertyPath: m_LocalPosition.z
@@ -2551,7 +2551,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6197438398489364577, guid: 158503964f8e5a44bbbcb1a6bb4e8f83, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -1.77
+      value: -0.44
       objectReference: {fileID: 0}
     - target: {fileID: 6197438398489364577, guid: 158503964f8e5a44bbbcb1a6bb4e8f83, type: 3}
       propertyPath: m_LocalPosition.z
@@ -2726,7 +2726,7 @@ MeshRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1324423103}
-  m_Enabled: 1
+  m_Enabled: 0
   m_CastShadows: 1
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
@@ -2995,7 +2995,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 1, z: 0, w: 0}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0.6243507, y: 0.44201824, z: 0.44201824}
+  m_LocalScale: {x: 0.9207427, y: 0.6518532, z: 0.6518532}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 11331021}
@@ -3014,6 +3014,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   targetRenderer: {fileID: 1428293431}
   clips:
+  - id: idle
+    frames:
+    - {fileID: 2800000, guid: d4ae6303ad7364975934343d5522fbf2, type: 3}
+    - {fileID: 2800000, guid: e4cd2ec6ca0ac405cbcb72dfb8b5f4d2, type: 3}
+    - {fileID: 2800000, guid: badd9c4ca1f2f4c3fb396dafba8da34f, type: 3}
+    - {fileID: 2800000, guid: 055ca2e03ceff4650b3b886a2d9da007, type: 3}
+    fps: 4
+    loop: 1
   - id: run
     frames:
     - {fileID: 2800000, guid: 11e86dc12879e4ee79aadddedeed289a, type: 3}
@@ -3026,6 +3034,13 @@ MonoBehaviour:
   randomizeInitialFrame: 1
   speedMultiplier: 1
   ignoreTimeScale: 0
+  useGazeMovementState: 1
+  gazeMovementSource: {fileID: 11331021}
+  idleClipId: idle
+  runClipId: run
+  idleAfterSeconds: 2
+  worldMovementThreshold: 0.01
+  gazeMovementThreshold: 0.004
 --- !u!64 &1428293430
 MeshCollider:
   m_ObjectHideFlags: 0
