@@ -12,27 +12,26 @@ public class SheepSound : MonoBehaviour
         cam = Camera.main;
     }
 
-    void Update()
-    {
-        Ray ray = new Ray(cam.transform.position, cam.transform.forward);
-        RaycastHit hit;
+  public float minInterval = 2f;
+public float maxInterval = 5f;
+private float nextPlayTime = 0f;
 
-        if (Physics.Raycast(ray, out hit, maxDistance))
+void Update()
+{
+    Ray ray = new Ray(cam.transform.position, cam.transform.forward);
+    RaycastHit hit;
+
+    if (Physics.Raycast(ray, out hit, maxDistance))
+    {
+        if (hit.transform == transform)
         {
-            if (hit.transform == transform)
+            if (Time.time >= nextPlayTime)
             {
-                if (!audioSource.isPlaying)
-                {
-                    audioSource.Play();
-                }
-                else
-                {
-                 if (audioSource.isPlaying)
-                {
-                    audioSource.Stop();
-                }
-                }       
+                audioSource.Play();
+                nextPlayTime = Time.time + Random.Range(minInterval, maxInterval);
             }
         }
     }
 }
+}
+

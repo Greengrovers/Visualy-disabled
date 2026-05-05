@@ -71,8 +71,6 @@ public class SheepController : MonoBehaviour
             sheepAnimation = GetComponentInChildren<sheep_animation_etc>();
 
         PlayAnimationForState();
-
-        Debug.Log("Start State: " + currentState);
     }
 
     private void OnDisable()
@@ -83,6 +81,8 @@ public class SheepController : MonoBehaviour
 
     void Update()
     {
+        if (isInGoal) return;
+
         stateTimer += Time.deltaTime;
 
         CheckStateTransitions();
@@ -90,14 +90,42 @@ public class SheepController : MonoBehaviour
 
         if (currentState != previousState)
         {
-            Debug.Log("Neuer State: " + currentState);
             PlayAnimationForState();
             previousState = currentState;
         }
     }
 
+    public void EnterGoal()
+    {
+        if (isInGoal) return;
+
+        isInGoal = true;
+
+        if (sheepAnimation != null)
+        {
+            sheepAnimation.Play(idleAnimationId);
+            sheepAnimation.SetSpeedMultiplier(0f);
+        }
+
+        Rigidbody rb = GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+            rb.isKinematic = true;
+        }
+
+        UnityEngine.AI.NavMeshAgent agent = GetComponent<UnityEngine.AI.NavMeshAgent>();
+        if (agent != null)
+        {
+            agent.isStopped = true;
+            agent.enabled = false;
+        }
+    }
+
     void ChangeState(SheepState newState)
     {
+        if (isInGoal) return;
         if (currentState == newState) return;
 
         currentState = newState;
@@ -118,6 +146,8 @@ public class SheepController : MonoBehaviour
 
     void HandleState()
     {
+        if (isInGoal) return;
+
         switch (currentState)
         {
             case SheepState.Wandering:
@@ -135,6 +165,7 @@ public class SheepController : MonoBehaviour
 
     void CheckStateTransitions()
     {
+        if (isInGoal) return;
         if (gazeTarget == null) return;
         if (stateTimer < minStateTime) return;
 
@@ -148,9 +179,7 @@ public class SheepController : MonoBehaviour
         {
             case SheepState.Wandering:
                 if (distanceToGaze < fleeStartRadius)
-                {
                     ChangeState(SheepState.Fleeing);
-                }
                 break;
 
             case SheepState.Fleeing:
@@ -186,7 +215,6 @@ public class SheepController : MonoBehaviour
                     if (distanceToGroup < regroupReachedDistance)
                     {
                         ChangeState(SheepState.Wandering);
-
                         SheepGroupManager.Instance.TryClearRegroupTargetIfAllFinished();
                     }
                 }
@@ -263,6 +291,7 @@ public class SheepController : MonoBehaviour
         foreach (SheepController other in neighbors)
         {
             if (other == null) continue;
+            if (other.isInGoal) continue;
 
             Vector3 toOther = other.transform.position - myPos;
             toOther.y = 0f;
@@ -271,9 +300,7 @@ public class SheepController : MonoBehaviour
             if (distance <= 0.001f) continue;
 
             if (useAlignment && other.currentState == SheepState.Fleeing)
-            {
                 alignment += other.GetCurrentForwardOnPlane();
-            }
 
             if (distance < separationRadius)
             {
@@ -358,9 +385,7 @@ public class SheepController : MonoBehaviour
         slowMultiplier = multiplier;
 
         if (sheepAnimation != null)
-        {
             sheepAnimation.SetSpeedMultiplier(multiplier);
-        }
     }
 
     public Vector3 GetCurrentForwardOnPlane()

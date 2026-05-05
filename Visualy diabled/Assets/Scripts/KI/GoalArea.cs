@@ -6,49 +6,30 @@ public class GoalArea : MonoBehaviour
     public float triggerRadius = 2f;
     public LayerMask sheepLayer;
 
-    private HashSet<GameObject> alreadyScored = new HashSet<GameObject>();
+    private HashSet<SheepController> alreadyScored = new HashSet<SheepController>();
 
     private void Update()
     {
         Collider[] hits = Physics.OverlapSphere(transform.position, triggerRadius, sheepLayer);
 
-        for (int i = 0; i < hits.Length; i++)
+        foreach (Collider hit in hits)
         {
-            GameObject sheepRoot = hits[i].transform.root.gameObject;
+            SheepController sheep = hit.GetComponentInParent<SheepController>();
+            if (sheep == null) continue;
 
-            if (alreadyScored.Contains(sheepRoot)) continue;
-
-            alreadyScored.Add(sheepRoot);
+            if (alreadyScored.Contains(sheep)) continue;
+            alreadyScored.Add(sheep);
 
             if (ScoreManager.Instance != null)
             {
                 ScoreManager.Instance.AddSheepScore();
             }
 
-            SheepController sheep = sheepRoot.GetComponent<SheepController>();
-            if (sheep != null)
-            {
-                sheep.isInGoal = true;
-                sheep.enabled = false;
-            }
-
-            var agent = sheepRoot.GetComponent<UnityEngine.AI.NavMeshAgent>();
-            if (agent != null)
-            {
-                agent.isStopped = true;
-            }
-
-            Rigidbody rb = sheepRoot.GetComponent<Rigidbody>();
-            if (rb != null)
-            {
-                rb.linearVelocity = Vector3.zero;
-                rb.angularVelocity = Vector3.zero;
-                rb.isKinematic = true;
-            }
+            sheep.EnterGoal();
         }
     }
 
-    void OnDrawGizmosSelected()
+    private void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.green;
         Gizmos.DrawWireSphere(transform.position, triggerRadius);
