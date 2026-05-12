@@ -1,6 +1,12 @@
 using UnityEngine;
 
-// Bridges SheepController state changes to texture clip playback.
+// Bruecke zwischen SheepController-Zustand und Textur-Animation.
+//
+// HINWEIS: Dieses Skript ist nur noetig wenn SheepController.sheepAnimation NICHT
+// gesetzt ist. Ist sheepAnimation im SheepController zugewiesen, uebernimmt dieser
+// die Animationssteuerung bereits direkt — dann kann SheepAnimationStateBridge
+// deaktiviert oder entfernt werden, um doppelte Zustandsverwaltung zu vermeiden.
+
 public class SheepAnimationStateBridge : MonoBehaviour
 {
     [Header("References")]
@@ -17,14 +23,10 @@ public class SheepAnimationStateBridge : MonoBehaviour
     private void Awake()
     {
         if (sheepController == null)
-        {
             sheepController = GetComponentInParent<SheepController>();
-        }
 
         if (textureAnimator == null)
-        {
             textureAnimator = GetComponentInChildren<sheep_animation_etc>();
-        }
     }
 
     private void OnEnable()
@@ -35,9 +37,7 @@ public class SheepAnimationStateBridge : MonoBehaviour
     private void Update()
     {
         if (sheepController == null || textureAnimator == null)
-        {
             return;
-        }
 
         if (!hasInitialized || sheepController.currentState != lastState)
         {
@@ -50,9 +50,7 @@ public class SheepAnimationStateBridge : MonoBehaviour
     public void ForceRefresh()
     {
         if (sheepController == null || textureAnimator == null)
-        {
             return;
-        }
 
         ApplyAnimationForState(sheepController.currentState);
         lastState = sheepController.currentState;
@@ -61,13 +59,16 @@ public class SheepAnimationStateBridge : MonoBehaviour
 
     private void ApplyAnimationForState(SheepState state)
     {
-        if (state == SheepState.Fleeing)
+        switch (state)
         {
-            textureAnimator.Play(runClipId);
-        }
-        else
-        {
-            textureAnimator.Play(idleClipId);
+            case SheepState.Fleeing:
+            case SheepState.Regrouping:
+                textureAnimator.Play(runClipId);
+                break;
+
+            default:
+                textureAnimator.Play(idleClipId);
+                break;
         }
     }
 }

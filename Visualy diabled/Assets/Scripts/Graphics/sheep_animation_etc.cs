@@ -41,8 +41,11 @@ public class sheep_animation_etc : MonoBehaviour
     [SerializeField] private bool ignoreTimeScale = false;
 
     [Header("State Sync (Optional)")]
-    [Tooltip("If enabled, this animator follows SheepController state from a parent object.")]
-    [SerializeField] private bool syncWithSheepController = true;
+    [Tooltip(
+        "Nur aktivieren wenn KEIN SheepController oder SheepAnimationStateBridge die Animation " +
+        "bereits steuert. Ansonsten gibt es dreifache Zustandsverwaltung."
+    )]
+    [SerializeField] private bool syncWithSheepController = false;
     [SerializeField] private SheepController sheepController;
     [SerializeField] private string wanderingClipId = "idle";
     [SerializeField] private string fleeingClipId = "run";
@@ -67,14 +70,10 @@ public class sheep_animation_etc : MonoBehaviour
     private void Awake()
     {
         if (targetRenderer == null)
-        {
             targetRenderer = GetComponent<Renderer>();
-        }
 
-        if (sheepController == null)
-        {
+        if (syncWithSheepController && sheepController == null)
             sheepController = GetComponentInParent<SheepController>();
-        }
 
         propertyBlock = new MaterialPropertyBlock();
         MigrateLegacyClipsToBrownGroup();
@@ -101,23 +100,17 @@ public class sheep_animation_etc : MonoBehaviour
     private void Update()
     {
         if (syncWithSheepController)
-        {
             SyncWithState(false);
-        }
 
         if (!hasValidClip || currentClip == null || currentClip.frames == null || currentClip.frames.Length == 0)
-        {
             return;
-        }
 
         float fps = Mathf.Max(1f, currentClip.fps * Mathf.Max(0f, speedMultiplier));
         float frameDuration = 1f / fps;
         frameTimer += ignoreTimeScale ? Time.unscaledDeltaTime : Time.deltaTime;
 
         if (frameTimer < frameDuration)
-        {
             return;
-        }
 
         while (frameTimer >= frameDuration)
         {
@@ -148,22 +141,15 @@ public class sheep_animation_etc : MonoBehaviour
         }
 
         if (!restartIfSame && currentClip == nextClip && hasValidClip)
-        {
             return true;
-        }
 
         currentClip = nextClip;
         hasValidClip = true;
         frameTimer = 0f;
 
-        if (randomizeInitialFrame)
-        {
-            currentFrame = UnityEngine.Random.Range(0, currentClip.frames.Length);
-        }
-        else
-        {
-            currentFrame = 0;
-        }
+        currentFrame = randomizeInitialFrame
+            ? UnityEngine.Random.Range(0, currentClip.frames.Length)
+            : 0;
 
         ApplyFrame(currentFrame);
         return true;
@@ -180,21 +166,10 @@ public class sheep_animation_etc : MonoBehaviour
         int frameCount = currentClip.frames.Length;
 
         if (next >= frameCount)
-        {
-            if (!currentClip.loop)
-            {
-                next = frameCount - 1;
-            }
-            else
-            {
-                next = 0;
-            }
-        }
+            next = currentClip.loop ? 0 : frameCount - 1;
 
         if (next == currentFrame)
-        {
             return;
-        }
 
         currentFrame = next;
         ApplyFrame(currentFrame);
@@ -203,15 +178,11 @@ public class sheep_animation_etc : MonoBehaviour
     private void ApplyFrame(int frameIndex)
     {
         if (targetRenderer == null || currentClip == null)
-        {
             return;
-        }
 
         Texture2D frame = currentClip.frames[frameIndex];
         if (frame == null)
-        {
             return;
-        }
 
         targetRenderer.GetPropertyBlock(propertyBlock);
         propertyBlock.SetTexture(MainTexId, frame);
@@ -225,42 +196,30 @@ public class sheep_animation_etc : MonoBehaviour
 
         activeClipSet = GetActiveClipSet();
         if (activeClipSet == null)
-        {
             return;
-        }
 
         for (int i = 0; i < activeClipSet.Length; i++)
         {
             FrameAnimationClip clip = activeClipSet[i];
             if (clip == null || string.IsNullOrWhiteSpace(clip.id))
-            {
                 continue;
-            }
 
             if (!clipLookup.ContainsKey(clip.id))
-            {
                 clipLookup.Add(clip.id, i);
-            }
         }
     }
 
     private FrameAnimationClip[] GetActiveClipSet()
     {
         if (colorGroups == null || colorGroups.Length == 0)
-        {
             return null;
-        }
 
         if (selectedColorGroupIndex < 0 || selectedColorGroupIndex >= colorGroups.Length)
-        {
             return null;
-        }
 
         ColorGroup selectedGroup = colorGroups[selectedColorGroupIndex];
         if (selectedGroup == null || selectedGroup.clips == null || selectedGroup.clips.Length == 0)
-        {
             return null;
-        }
 
         return selectedGroup.clips;
     }
@@ -276,21 +235,16 @@ public class sheep_animation_etc : MonoBehaviour
         }
 
         if (hasSelectedColorGroup && keepColorGroupOnReenable)
-        {
             return;
-        }
 
         selectedColorGroupIndex = validGroupIndices[UnityEngine.Random.Range(0, validGroupIndices.Length)];
-
         hasSelectedColorGroup = true;
     }
 
     private int[] GetValidGroupIndices()
     {
         if (colorGroups == null)
-        {
             return Array.Empty<int>();
-        }
 
         List<int> valid = new List<int>();
 
@@ -298,9 +252,7 @@ public class sheep_animation_etc : MonoBehaviour
         {
             ColorGroup group = colorGroups[i];
             if (group != null && group.clips != null && group.clips.Length > 0)
-            {
                 valid.Add(i);
-            }
         }
 
         return valid.ToArray();
@@ -309,23 +261,17 @@ public class sheep_animation_etc : MonoBehaviour
     private void MigrateLegacyClipsToBrownGroup()
     {
         if (clips == null || clips.Length == 0)
-        {
             return;
-        }
 
         if (colorGroups == null)
-        {
             colorGroups = Array.Empty<ColorGroup>();
-        }
 
         int brownIndex = -1;
         for (int i = 0; i < colorGroups.Length; i++)
         {
             ColorGroup group = colorGroups[i];
             if (group == null || string.IsNullOrWhiteSpace(group.id))
-            {
                 continue;
-            }
 
             if (group.id.Trim().ToLowerInvariant() == "brown")
             {
@@ -336,12 +282,7 @@ public class sheep_animation_etc : MonoBehaviour
 
         if (brownIndex < 0)
         {
-            ColorGroup brownGroup = new ColorGroup
-            {
-                id = "brown",
-                clips = clips
-            };
-
+            ColorGroup brownGroup = new ColorGroup { id = "brown", clips = clips };
             List<ColorGroup> expanded = new List<ColorGroup>(colorGroups.Where(g => g != null));
             expanded.Insert(0, brownGroup);
             colorGroups = expanded.ToArray();
@@ -357,32 +298,18 @@ public class sheep_animation_etc : MonoBehaviour
             {
                 Dictionary<string, FrameAnimationClip> merged = new Dictionary<string, FrameAnimationClip>();
 
-                for (int i = 0; i < brownGroup.clips.Length; i++)
+                foreach (FrameAnimationClip clip in brownGroup.clips)
                 {
-                    FrameAnimationClip clip = brownGroup.clips[i];
-                    if (clip == null || string.IsNullOrWhiteSpace(clip.id))
-                    {
-                        continue;
-                    }
+                    if (clip == null || string.IsNullOrWhiteSpace(clip.id)) continue;
                     string key = clip.id.Trim().ToLowerInvariant();
-                    if (!merged.ContainsKey(key))
-                    {
-                        merged.Add(key, clip);
-                    }
+                    if (!merged.ContainsKey(key)) merged.Add(key, clip);
                 }
 
-                for (int i = 0; i < clips.Length; i++)
+                foreach (FrameAnimationClip clip in clips)
                 {
-                    FrameAnimationClip clip = clips[i];
-                    if (clip == null || string.IsNullOrWhiteSpace(clip.id))
-                    {
-                        continue;
-                    }
+                    if (clip == null || string.IsNullOrWhiteSpace(clip.id)) continue;
                     string key = clip.id.Trim().ToLowerInvariant();
-                    if (!merged.ContainsKey(key))
-                    {
-                        merged.Add(key, clip);
-                    }
+                    if (!merged.ContainsKey(key)) merged.Add(key, clip);
                 }
 
                 brownGroup.clips = new List<FrameAnimationClip>(merged.Values).ToArray();
@@ -399,29 +326,18 @@ public class sheep_animation_etc : MonoBehaviour
         if (sheepController == null)
         {
             sheepController = GetComponentInParent<SheepController>();
-            if (sheepController == null)
-            {
-                return;
-            }
+            if (sheepController == null) return;
         }
 
         SheepState state = sheepController.currentState;
         if (!force && hasSyncedState && state == lastSyncedState)
-        {
             return;
-        }
 
         switch (state)
         {
-            case SheepState.Wandering:
-                Play(wanderingClipId, false);
-                break;
-            case SheepState.Fleeing:
-                Play(fleeingClipId, false);
-                break;
-            case SheepState.Regrouping:
-                Play(regroupingClipId, false);
-                break;
+            case SheepState.Wandering:   Play(wanderingClipId,   false); break;
+            case SheepState.Fleeing:     Play(fleeingClipId,     false); break;
+            case SheepState.Regrouping:  Play(regroupingClipId,  false); break;
         }
 
         lastSyncedState = state;
@@ -433,53 +349,33 @@ public class sheep_animation_etc : MonoBehaviour
         MigrateLegacyClipsToBrownGroup();
         ValidateClipArray(clips);
 
-        if (colorGroups == null)
-        {
-            return;
-        }
+        if (colorGroups == null) return;
 
-        for (int i = 0; i < colorGroups.Length; i++)
+        foreach (ColorGroup group in colorGroups)
         {
-            ColorGroup group = colorGroups[i];
-            if (group == null)
-            {
-                continue;
-            }
-
-            ValidateClipArray(group.clips);
+            if (group != null)
+                ValidateClipArray(group.clips);
         }
     }
 
     private void ValidateClipArray(FrameAnimationClip[] clipArray)
     {
-        if (clipArray == null)
-        {
-            return;
-        }
+        if (clipArray == null) return;
 
-        for (int i = 0; i < clipArray.Length; i++)
+        foreach (FrameAnimationClip clip in clipArray)
         {
-            FrameAnimationClip clip = clipArray[i];
-            if (clip == null || string.IsNullOrWhiteSpace(clip.id))
-            {
-                continue;
-            }
+            if (clip == null || string.IsNullOrWhiteSpace(clip.id)) continue;
 
             string clipId = clip.id.Trim().ToLowerInvariant();
+
             if (clipId == "idle" || clipId == "run")
-            {
                 clip.loop = true;
-            }
 
             if (clipId == "idle" && clip.frames != null && clip.frames.Length != 8)
-            {
                 Debug.LogWarning("Clip 'idle' is expected to have 8 frames.", this);
-            }
 
             if (clipId == "run" && clip.frames != null && clip.frames.Length != 4)
-            {
                 Debug.LogWarning("Clip 'run' is expected to have 4 frames.", this);
-            }
         }
     }
 }

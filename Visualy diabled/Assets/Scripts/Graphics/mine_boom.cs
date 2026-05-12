@@ -1,8 +1,12 @@
 using UnityEngine;
 using System;
 
+
+
 public class mine_boom : MonoBehaviour
 {
+    
+    
     [Serializable]
     public class FrameAnimationClip
     {
@@ -36,25 +40,22 @@ public class mine_boom : MonoBehaviour
     private static readonly int MainTexId = Shader.PropertyToID("_MainTex");
     private static readonly int BaseMapId = Shader.PropertyToID("_BaseMap");
 
-    private void Awake()
+  private void Awake()
+{
+    if (targetRenderer == null)
     {
-        if (targetRenderer == null)
-        {
-            targetRenderer = GetComponent<Renderer>();
-        }
-
-        mines = GetComponent<Mines>();
-        propertyBlock = new MaterialPropertyBlock();
-
-        if (isExplosionInstance)
-        {
-            StartExplosionVisual();
-        }
-        else
-        {
-            ApplyClipFrame(0);
-        }
+        targetRenderer = GetComponent<Renderer>();
     }
+
+    mines = GetComponent<Mines>();
+    propertyBlock = new MaterialPropertyBlock();
+
+    if (isExplosionInstance)
+    {
+        StartExplosionVisual();
+    }
+    // else: nichts tun – die Mine behält einfach ihr normales Material
+}
 
     private void Update()
     {
@@ -124,7 +125,7 @@ public class mine_boom : MonoBehaviour
 
         if (hideStaticMineWhenTriggered)
         {
-            HideStaticMineVisuals();
+            Destroy(gameObject);
         }
     }
 

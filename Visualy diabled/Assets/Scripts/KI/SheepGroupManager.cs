@@ -14,7 +14,21 @@ public class SheepGroupManager : MonoBehaviour
 
     private void Awake()
     {
+        // Singleton-Guard: verhindert dass eine zweite Instanz die erste still ueberschreibt.
+        if (Instance != null && Instance != this)
+        {
+            Debug.LogWarning("SheepGroupManager: Duplicate instance detected, destroying self.", this);
+            Destroy(gameObject);
+            return;
+        }
+
         Instance = this;
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this)
+            Instance = null;
     }
 
     public void RegisterSheep(SheepController sheep)
@@ -49,9 +63,7 @@ public class SheepGroupManager : MonoBehaviour
             if (sheep == null) continue;
 
             if (sheep.currentState == SheepState.Regrouping)
-            {
                 return;
-            }
         }
 
         ClearGroupRegroupTarget();
