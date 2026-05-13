@@ -1081,6 +1081,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Obstacle_Block_Root (4)
       objectReference: {fileID: 0}
+    - target: {fileID: 3352414650034356101, guid: 081c58039ef389b4681a3a5666019929, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 5316030548650140842, guid: 081c58039ef389b4681a3a5666019929, type: 3}
       propertyPath: m_LocalPosition.x
       value: 53.1
@@ -1120,6 +1124,18 @@ PrefabInstance:
     - target: {fileID: 5316030548650140842, guid: 081c58039ef389b4681a3a5666019929, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 90
+      objectReference: {fileID: 0}
+    - target: {fileID: 5600096038545654582, guid: 081c58039ef389b4681a3a5666019929, type: 3}
+      propertyPath: lurePoint
+      value: 
+      objectReference: {fileID: 1534880414}
+    - target: {fileID: 5600096038545654582, guid: 081c58039ef389b4681a3a5666019929, type: 3}
+      propertyPath: gazeTarget
+      value: 
+      objectReference: {fileID: 11331021}
+    - target: {fileID: 5600096038545654582, guid: 081c58039ef389b4681a3a5666019929, type: 3}
+      propertyPath: sheepLayer.m_Bits
+      value: 64
       objectReference: {fileID: 0}
     - target: {fileID: 6121867223307474962, guid: 081c58039ef389b4681a3a5666019929, type: 3}
       propertyPath: m_LocalScale.x
@@ -1804,6 +1820,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Obstacle_Block_Root (2)
       objectReference: {fileID: 0}
+    - target: {fileID: 3352414650034356101, guid: 081c58039ef389b4681a3a5666019929, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 5316030548650140842, guid: 081c58039ef389b4681a3a5666019929, type: 3}
       propertyPath: m_LocalScale.x
       value: 1.5625
@@ -1847,6 +1867,18 @@ PrefabInstance:
     - target: {fileID: 5316030548650140842, guid: 081c58039ef389b4681a3a5666019929, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5600096038545654582, guid: 081c58039ef389b4681a3a5666019929, type: 3}
+      propertyPath: lurePoint
+      value: 
+      objectReference: {fileID: 1534880414}
+    - target: {fileID: 5600096038545654582, guid: 081c58039ef389b4681a3a5666019929, type: 3}
+      propertyPath: gazeTarget
+      value: 
+      objectReference: {fileID: 11331021}
+    - target: {fileID: 5600096038545654582, guid: 081c58039ef389b4681a3a5666019929, type: 3}
+      propertyPath: sheepLayer.m_Bits
+      value: 64
       objectReference: {fileID: 0}
     - target: {fileID: 6121867223307474962, guid: 081c58039ef389b4681a3a5666019929, type: 3}
       propertyPath: m_LocalScale.x
@@ -3247,6 +3279,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Obstacle_Block_Root (3)
       objectReference: {fileID: 0}
+    - target: {fileID: 3352414650034356101, guid: 081c58039ef389b4681a3a5666019929, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 5316030548650140842, guid: 081c58039ef389b4681a3a5666019929, type: 3}
       propertyPath: m_LocalPosition.x
       value: -53.4
@@ -3286,6 +3322,18 @@ PrefabInstance:
     - target: {fileID: 5316030548650140842, guid: 081c58039ef389b4681a3a5666019929, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 90
+      objectReference: {fileID: 0}
+    - target: {fileID: 5600096038545654582, guid: 081c58039ef389b4681a3a5666019929, type: 3}
+      propertyPath: lurePoint
+      value: 
+      objectReference: {fileID: 1534880414}
+    - target: {fileID: 5600096038545654582, guid: 081c58039ef389b4681a3a5666019929, type: 3}
+      propertyPath: gazeTarget
+      value: 
+      objectReference: {fileID: 11331021}
+    - target: {fileID: 5600096038545654582, guid: 081c58039ef389b4681a3a5666019929, type: 3}
+      propertyPath: sheepLayer.m_Bits
+      value: 64
       objectReference: {fileID: 0}
     - target: {fileID: 6121867223307474962, guid: 081c58039ef389b4681a3a5666019929, type: 3}
       propertyPath: m_LocalScale.x
