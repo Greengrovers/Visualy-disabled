@@ -6,8 +6,9 @@ public class Mines : MonoBehaviour
     public LayerMask sheepLayer;
     public bool destroyTrapAfterUse = true;
     public float destructionRadius = 4f;
+    public float destroyDelay = 2f;
 
-    private bool hasTriggered = false; // Mehrfach-Trigger verhindern
+    private bool hasTriggered = false;
 
     void Update()
     {
@@ -19,28 +20,28 @@ public class Mines : MonoBehaviour
         {
             hasTriggered = true;
 
-            // 1. Erst Explosion visuell triggern
-            mine_boom boom = GetComponent<mine_boom>();
+            mine_boom boom = GetComponentInChildren<mine_boom>();
+
             if (boom != null)
             {
-                boom.TriggerExplosion(); // kümmert sich selbst um Destroy(gameObject)
+                boom.PlayExplosion();
             }
 
-            // 2. Dann Schafe zerstören
             Collider[] explosion = Physics.OverlapSphere(transform.position, destructionRadius, sheepLayer);
+
             foreach (Collider hit in explosion)
             {
                 SheepController sheep = hit.GetComponentInParent<SheepController>();
+
                 if (sheep != null)
                 {
                     Destroy(sheep.gameObject);
                 }
             }
 
-            // 3. Nur zerstören wenn kein mine_boom vorhanden
-            if (boom == null && destroyTrapAfterUse)
+            if (destroyTrapAfterUse)
             {
-                Destroy(gameObject);
+                Destroy(gameObject, destroyDelay);
             }
         }
     }
@@ -49,5 +50,8 @@ public class Mines : MonoBehaviour
     {
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, triggerRadius);
+
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireSphere(transform.position, destructionRadius);
     }
 }

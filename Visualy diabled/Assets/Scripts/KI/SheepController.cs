@@ -5,7 +5,8 @@ public enum SheepState
 {
     Wandering,
     Fleeing,
-    Regrouping
+    Regrouping,
+    Lured
 }
 
 public class SheepController : MonoBehaviour
@@ -24,6 +25,15 @@ public class SheepController : MonoBehaviour
     public float regroupSpeed = 2f;
     public float regroupReachedDistance = 1f;
 
+    [Header("Lured")]
+    public float luredSpeed = 2.5f;
+    public float luredReachedDistance = 0.2f;
+
+    private Vector3 luredTarget;
+    private Vector3 luredStartPosition;
+    private float luredMoveDistance;
+    private bool hasLuredTarget = false;
+
     [Header("Rotation")]
     public float rotationSpeed = 8f;
 
@@ -35,17 +45,6 @@ public class SheepController : MonoBehaviour
     public float obstacleCheckDistance = 1.5f;
     public float obstacleSphereRadius = 0.25f;
     public bool isInGoal = false;
-
-    [Header("Idle Obstacle Help")]
-    public float idleObstacleCheckRadius = 2f;
-    public float idleObstacleMoveDistance = 1.8f;
-    public float idleObstacleMoveSpeed = 2f;
-
-    [Header("Blocked To Idle Help")]
-    [Tooltip("Wie lange das Schaf geblockt sein muss, bevor es in Wandering wechselt.")]
-    public float blockedToIdleDelay = 1.2f;
-    [Tooltip("Wie lange das Schaf nach einem Block nicht in Fleeing wechseln darf. Gibt Zeit sich von der Wand zu entfernen.")]
-    public float blockedRecoveryTime = 1.5f;
 
     [Header("Group Behaviour")]
     public float neighborRadius = 4f;
@@ -65,16 +64,6 @@ public class SheepController : MonoBehaviour
     private Vector3 fleeFromPosition;
     private Vector3 lastFleeDirection;
     private float slowMultiplier = 1f;
-
-    private Vector3 idleObstacleHelpTarget;
-    private bool isUsingIdleObstacleHelp = false;
-
-    private float blockedTimer = 0f;
-    private Vector3 lastBlockingObstaclePosition;
-    private bool hasLastBlockingObstacle = false;
-
-    private bool isRecoveringFromBlock = false;
-    private float blockedRecoveryTimer = 0f;
 
     private void OnEnable()
     {
@@ -104,14 +93,6 @@ public class SheepController : MonoBehaviour
 
         stateTimer += Time.deltaTime;
 
-        // Recovery-Countdown nach Block-Ereignis
-        if (isRecoveringFromBlock)
-        {
-            blockedRecoveryTimer += Time.deltaTime;
-            if (blockedRecoveryTimer >= blockedRecoveryTime)
-                isRecoveringFromBlock = false;
-        }
-
         CheckStateTransitions();
         HandleState();
 
@@ -127,7 +108,7 @@ public class SheepController : MonoBehaviour
         if (isInGoal) return;
 
         isInGoal = true;
-        isUsingIdleObstacleHelp = false;
+        hasLuredTarget = false;
 
         if (sheepAnimation != null)
         {
@@ -136,6 +117,7 @@ public class SheepController : MonoBehaviour
         }
 
         Rigidbody rb = GetComponent<Rigidbody>();
+
         if (rb != null)
         {
             rb.linearVelocity = Vector3.zero;
@@ -144,11 +126,34 @@ public class SheepController : MonoBehaviour
         }
 
         UnityEngine.AI.NavMeshAgent agent = GetComponent<UnityEngine.AI.NavMeshAgent>();
+
         if (agent != null)
         {
             agent.isStopped = true;
             agent.enabled = false;
         }
+    }
+
+    public void LureTowardsPointForDistance(Vector3 point, float moveDistance)
+    {
+        if (isInGoal) return;
+        if (currentState == SheepState.Lured) return;
+
+        Vector3 direction = point - transform.position;
+        direction.y = 0f;
+
+        if (direction.sqrMagnitude <= 0.001f) return;
+
+        direction.Normalize();
+
+        luredStartPosition = transform.position;
+        luredTarget = transform.position + direction * moveDistance;
+        luredTarget.y = transform.position.y;
+
+        luredMoveDistance = moveDistance;
+        hasLuredTarget = true;
+
+        ChangeState(SheepState.Lured);
     }
 
     void ChangeState(SheepState newState)
@@ -158,7 +163,6 @@ public class SheepController : MonoBehaviour
 
         currentState = newState;
         stateTimer = 0f;
-        blockedTimer = 0f;
 
         if (newState == SheepState.Fleeing && gazeTarget != null)
         {
@@ -171,18 +175,12 @@ public class SheepController : MonoBehaviour
             if (lastFleeDirection.sqrMagnitude > 0.001f)
                 lastFleeDirection.Normalize();
 
-            isUsingIdleObstacleHelp = false;
-            isRecoveringFromBlock = false; // Recovery abbrechen wenn Spieler nah genug ist
-        }
-
-        if (newState == SheepState.Regrouping)
-        {
-            isUsingIdleObstacleHelp = false;
+            hasLuredTarget = false;
         }
 
         if (newState == SheepState.Wandering)
         {
-            TryStartIdleObstacleHelp();
+            hasLuredTarget = false;
         }
     }
 
@@ -191,7 +189,6 @@ public class SheepController : MonoBehaviour
         switch (currentState)
         {
             case SheepState.Wandering:
-                HandleIdleObstacleHelp();
                 break;
 
             case SheepState.Fleeing:
@@ -200,6 +197,10 @@ public class SheepController : MonoBehaviour
 
             case SheepState.Regrouping:
                 HandleRegroupMovement();
+                break;
+
+            case SheepState.Lured:
+                HandleLuredMovement();
                 break;
         }
     }
@@ -215,12 +216,20 @@ public class SheepController : MonoBehaviour
 
         float distanceToGaze = Vector3.Distance(sheepPos, gazePos);
 
+        if (currentState == SheepState.Lured)
+        {
+            if (distanceToGaze < fleeStartRadius)
+            {
+                ChangeState(SheepState.Fleeing);
+            }
+
+            return;
+        }
+
         switch (currentState)
         {
             case SheepState.Wandering:
-                // Waehrend Recovery nach einem Block nicht sofort wieder in Fleeing wechseln —
-                // das Schaf muss sich erst von der Wand entfernen koennen.
-                if (!isRecoveringFromBlock && distanceToGaze < fleeStartRadius)
+                if (distanceToGaze < fleeStartRadius)
                     ChangeState(SheepState.Fleeing);
                 break;
 
@@ -284,23 +293,7 @@ public class SheepController : MonoBehaviour
         finalDirection.Normalize();
         finalDirection = FindSteeringDirection(finalDirection);
 
-        if (finalDirection.sqrMagnitude <= 0.001f)
-        {
-            blockedTimer += Time.deltaTime;
-
-            if (blockedTimer >= blockedToIdleDelay)
-            {
-                // Recovery starten: verhindert sofortiges Re-Enter in Fleeing
-                // damit TryStartIdleObstacleHelp() das Schaf wirklich von der Wand wegbewegen kann.
-                isRecoveringFromBlock = true;
-                blockedRecoveryTimer = 0f;
-                ChangeState(SheepState.Wandering);
-            }
-
-            return;
-        }
-
-        blockedTimer = 0f;
+        if (finalDirection.sqrMagnitude <= 0.001f) return;
 
         transform.position += finalDirection * fleeSpeed * slowMultiplier * Time.deltaTime;
         RotateTowards(finalDirection);
@@ -341,94 +334,29 @@ public class SheepController : MonoBehaviour
         RotateTowards(finalDirection);
     }
 
-    void TryStartIdleObstacleHelp()
+    void HandleLuredMovement()
     {
-        isUsingIdleObstacleHelp = false;
-
-        Vector3 obstaclePosition = Vector3.zero;
-        bool foundObstacle = false;
-
-        if (hasLastBlockingObstacle)
+        if (!hasLuredTarget)
         {
-            obstaclePosition = lastBlockingObstaclePosition;
-            foundObstacle = true;
-        }
-        else
-        {
-            Collider[] hits = Physics.OverlapSphere(transform.position, idleObstacleCheckRadius);
-
-            float closestDistanceSqr = float.MaxValue;
-            HashSet<BlockingObstacle> seen = new HashSet<BlockingObstacle>();
-
-            foreach (Collider hit in hits)
-            {
-                BlockingObstacle obstacle =
-                    hit.GetComponent<BlockingObstacle>() ??
-                    hit.GetComponentInParent<BlockingObstacle>();
-
-                if (obstacle == null) continue;
-                if (!seen.Add(obstacle)) continue; // Duplikat (z.B. MeshCollider + CapsuleCollider) ueberspringen
-
-                Vector3 diff = transform.position - hit.bounds.center;
-                diff.y = 0f;
-
-                float distSqr = diff.sqrMagnitude;
-
-                if (distSqr < closestDistanceSqr)
-                {
-                    closestDistanceSqr = distSqr;
-                    obstaclePosition = hit.bounds.center;
-                    obstaclePosition.y = transform.position.y;
-                    foundObstacle = true;
-                }
-            }
+            ChangeState(SheepState.Wandering);
+            return;
         }
 
-        if (!foundObstacle) return;
+        Vector3 fromStart = transform.position - luredStartPosition;
+        fromStart.y = 0f;
 
-        Vector3 awayDirection = transform.position - obstaclePosition;
-        awayDirection.y = 0f;
-
-        if (awayDirection.sqrMagnitude < 0.001f)
+        if (fromStart.magnitude >= luredMoveDistance)
         {
-            awayDirection = lastFleeDirection;
-            awayDirection.y = 0f;
+            ChangeState(SheepState.Wandering);
+            return;
         }
 
-        if (awayDirection.sqrMagnitude < 0.001f)
-        {
-            awayDirection = transform.forward;
-            awayDirection.y = 0f;
-        }
-
-        if (awayDirection.sqrMagnitude < 0.001f) return;
-
-        awayDirection.Normalize();
-
-        Vector3 diagonalDirection = Quaternion.Euler(0f, 35f, 0f) * awayDirection;
-        diagonalDirection.y = 0f;
-
-        if (diagonalDirection.sqrMagnitude < 0.001f) return;
-
-        diagonalDirection.Normalize();
-
-        idleObstacleHelpTarget = transform.position + diagonalDirection * idleObstacleMoveDistance;
-        idleObstacleHelpTarget.y = transform.position.y;
-
-        isUsingIdleObstacleHelp = true;
-        hasLastBlockingObstacle = false;
-    }
-
-    void HandleIdleObstacleHelp()
-    {
-        if (!isUsingIdleObstacleHelp) return;
-
-        Vector3 direction = idleObstacleHelpTarget - transform.position;
+        Vector3 direction = luredTarget - transform.position;
         direction.y = 0f;
 
-        if (direction.magnitude < 0.1f)
+        if (direction.magnitude < luredReachedDistance)
         {
-            isUsingIdleObstacleHelp = false;
+            ChangeState(SheepState.Wandering);
             return;
         }
 
@@ -438,11 +366,10 @@ public class SheepController : MonoBehaviour
 
         if (steeringDirection.sqrMagnitude <= 0.001f)
         {
-            isUsingIdleObstacleHelp = false;
-            return;
+            steeringDirection = direction;
         }
 
-        transform.position += steeringDirection * idleObstacleMoveSpeed * slowMultiplier * Time.deltaTime;
+        transform.position += steeringDirection * luredSpeed * slowMultiplier * Time.deltaTime;
         RotateTowards(steeringDirection);
     }
 
@@ -554,9 +481,6 @@ public class SheepController : MonoBehaviour
 
             if (obstacle != null)
             {
-                lastBlockingObstaclePosition = hit.collider.bounds.center;
-                lastBlockingObstaclePosition.y = transform.position.y;
-                hasLastBlockingObstacle = true;
                 return true;
             }
         }
@@ -589,6 +513,7 @@ public class SheepController : MonoBehaviour
 
             case SheepState.Fleeing:
             case SheepState.Regrouping:
+            case SheepState.Lured:
                 sheepAnimation.Play(runAnimationId);
                 break;
         }
@@ -623,8 +548,5 @@ public class SheepController : MonoBehaviour
 
         Gizmos.color = Color.magenta;
         Gizmos.DrawWireSphere(transform.position, separationRadius);
-
-        Gizmos.color = Color.green;
-        Gizmos.DrawWireSphere(transform.position, idleObstacleCheckRadius);
     }
 }
