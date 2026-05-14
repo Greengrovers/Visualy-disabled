@@ -168,32 +168,32 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   targetRenderer: {fileID: 2667693078163188450}
-  clips:
-  - id: idle
-    frames:
-    - {fileID: 2800000, guid: 8bcac4b988c134b589cb1f45c3404b77, type: 3}
-    - {fileID: 2800000, guid: d3239f1ecd4cf4d0f8234976f5f5d35e, type: 3}
-    - {fileID: 2800000, guid: 482f0b6c3860a437d8b4d8e5c24163a3, type: 3}
-    - {fileID: 2800000, guid: 77550f2211c204185a024a2184c0e491, type: 3}
-    - {fileID: 2800000, guid: 9fd9647c763c447e3814c6977aa18b3c, type: 3}
-    - {fileID: 2800000, guid: 197e7bc8240304cdfa031bd88239f19b, type: 3}
-    - {fileID: 2800000, guid: c5006d5eea2ee4a17953ccb2ce38773d, type: 3}
-    - {fileID: 2800000, guid: a36274b4b97b84dea87dbb0b81737951, type: 3}
-    fps: 5
-    loop: 1
-  - id: run
-    frames:
-    - {fileID: 2800000, guid: 9ed75e1fce94c4dc99c24461c68ee484, type: 3}
-    - {fileID: 2800000, guid: 0a998186afcf24ac6a0d1944fb37d91a, type: 3}
-    - {fileID: 2800000, guid: 3fbb5eee13308484286543f485905916, type: 3}
-    - {fileID: 2800000, guid: 295161b91c0484474bc2b3f5128aa0e4, type: 3}
-    fps: 5
-    loop: 1
+  clips: []
   initialClip: idle
   randomizeInitialFrame: 1
-  useColorGroups: 1
-  includeBaseClipsAsGroup: 0
   colorGroups:
+  - id: brown
+    clips:
+    - id: idle
+      frames:
+      - {fileID: 2800000, guid: 8bcac4b988c134b589cb1f45c3404b77, type: 3}
+      - {fileID: 2800000, guid: d3239f1ecd4cf4d0f8234976f5f5d35e, type: 3}
+      - {fileID: 2800000, guid: 482f0b6c3860a437d8b4d8e5c24163a3, type: 3}
+      - {fileID: 2800000, guid: 77550f2211c204185a024a2184c0e491, type: 3}
+      - {fileID: 2800000, guid: 9fd9647c763c447e3814c6977aa18b3c, type: 3}
+      - {fileID: 2800000, guid: 197e7bc8240304cdfa031bd88239f19b, type: 3}
+      - {fileID: 2800000, guid: c5006d5eea2ee4a17953ccb2ce38773d, type: 3}
+      - {fileID: 2800000, guid: a36274b4b97b84dea87dbb0b81737951, type: 3}
+      fps: 5
+      loop: 1
+    - id: run
+      frames:
+      - {fileID: 2800000, guid: 9ed75e1fce94c4dc99c24461c68ee484, type: 3}
+      - {fileID: 2800000, guid: 0a998186afcf24ac6a0d1944fb37d91a, type: 3}
+      - {fileID: 2800000, guid: 3fbb5eee13308484286543f485905916, type: 3}
+      - {fileID: 2800000, guid: 295161b91c0484474bc2b3f5128aa0e4, type: 3}
+      fps: 7
+      loop: 1
   - id: emo
     clips:
     - id: idle
@@ -214,7 +214,7 @@ MonoBehaviour:
       - {fileID: 2800000, guid: d657f487bd395495883d1c750940834f, type: 3}
       - {fileID: 2800000, guid: bab24ccd3debd4aeeba999f5ca71c0b7, type: 3}
       - {fileID: 2800000, guid: a1af012d03e304fd4b66eed377b5bf46, type: 3}
-      fps: 5
+      fps: 7
       loop: 1
   - id: whiteBoiNooo
     clips:
@@ -236,10 +236,8 @@ MonoBehaviour:
       - {fileID: 2800000, guid: 1365ed8d7ce3f464c845690a37be61fb, type: 3}
       - {fileID: 2800000, guid: bf12ce44b344b4204a5462348adafc31, type: 3}
       - {fileID: 2800000, guid: d066f0b8894324e66a0a291f78d2ba35, type: 3}
-      fps: 5
+      fps: 7
       loop: 1
-  randomizeColorGroup: 1
-  fixedColorGroupIndex: 0
   keepColorGroupOnReenable: 1
   speedMultiplier: 1
   ignoreTimeScale: 0
@@ -303,9 +301,12 @@ MonoBehaviour:
   fleeSpeed: 4
   regroupSpeed: 2
   regroupReachedDistance: 1
+  luredSpeed: 2.5
+  luredReachedDistance: 0.2
   rotationSpeed: 8
   minStateTime: 0.3
   obstacleCheckDistance: 1.5
+  obstacleSphereRadius: 0.25
   isInGoal: 0
   neighborRadius: 4
   separationRadius: 1.5
@@ -423,6 +424,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34a8dbb5fce1b734189cc0459b31a966, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  audioSource: {fileID: 0}
   maxDistance: 10
   minInterval: 2
   maxInterval: 5
@@ -618,9 +620,12 @@ MonoBehaviour:
   fleeSpeed: 4
   regroupSpeed: 2
   regroupReachedDistance: 1
+  luredSpeed: 2.5
+  luredReachedDistance: 0.2
   rotationSpeed: 8
   minStateTime: 0.3
   obstacleCheckDistance: 1.5
+  obstacleSphereRadius: 0.25
   isInGoal: 0
   neighborRadius: 4
   separationRadius: 1.5

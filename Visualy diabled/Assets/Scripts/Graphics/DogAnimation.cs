@@ -13,6 +13,13 @@ public class DogAnimation : MonoBehaviour
         public bool loop = true;
     }
 
+    [Serializable]
+    public class ColorGroup
+    {
+        public string id = "standard";
+        public FrameAnimationClip[] clips;
+    }
+
     [Header("Renderer")]
     [Tooltip("If empty, uses Renderer on this GameObject.")]
     [SerializeField] private Renderer targetRenderer;
@@ -21,6 +28,11 @@ public class DogAnimation : MonoBehaviour
     [SerializeField] private FrameAnimationClip[] clips;
     [SerializeField] private string initialClip = "idle";
     [SerializeField] private bool randomizeInitialFrame = true;
+
+    [Header("Color Groups")]
+    [SerializeField] private ColorGroup[] colorGroups;
+    [Tooltip("Keeps the selected color group when this object is disabled and re-enabled.")]
+    [SerializeField] private bool keepColorGroupOnReenable = true;
 
     [Header("Playback")]
     [SerializeField] private float speedMultiplier = 1f;
@@ -40,10 +52,13 @@ public class DogAnimation : MonoBehaviour
 
     private readonly Dictionary<string, int> clipLookup = new Dictionary<string, int>();
     private MaterialPropertyBlock propertyBlock;
+    private FrameAnimationClip[] activeClipSet;
     private FrameAnimationClip currentClip;
     private int currentFrame;
     private float frameTimer;
     private bool hasValidClip;
+    private int selectedColorGroupIndex = -1;
+    private bool hasSelectedColorGroup;
     private Vector3 lastMovementSourcePosition;
     private bool hasLastMovementSourcePosition;
     private Vector2 lastGazeViewport;
@@ -71,11 +86,17 @@ public class DogAnimation : MonoBehaviour
         }
 
         propertyBlock = new MaterialPropertyBlock();
+        MigrateLegacyClipsToStandardGroup();
+        EnsureColorGroupSelected();
         BuildLookup();
     }
 
     private void OnEnable()
     {
+        MigrateLegacyClipsToStandardGroup();
+        EnsureColorGroupSelected();
+        BuildLookup();
+
         hasLastMovementSourcePosition = false;
         hasLastGazeViewport = false;
         noGazeMovementTimer = 0f;
@@ -111,13 +132,19 @@ public class DogAnimation : MonoBehaviour
 
     public bool Play(string clipId, bool restartIfSame = false)
     {
+        if (activeClipSet == null || activeClipSet.Length == 0)
+        {
+            hasValidClip = false;
+            return false;
+        }
+
         if (string.IsNullOrWhiteSpace(clipId) || !clipLookup.TryGetValue(clipId, out int clipIndex))
         {
             hasValidClip = false;
             return false;
         }
 
-        FrameAnimationClip nextClip = clips[clipIndex];
+        FrameAnimationClip nextClip = activeClipSet[clipIndex];
         if (nextClip == null || nextClip.frames == null || nextClip.frames.Length == 0)
         {
             hasValidClip = false;
@@ -200,14 +227,14 @@ public class DogAnimation : MonoBehaviour
     {
         clipLookup.Clear();
 
-        if (clips == null)
-        {
-            return;
-        }
+        activeClipSet = GetActiveClipSet();
 
-        for (int i = 0; i < clips.Length; i++)
+        if (activeClipSet == null)
+            return;
+
+        for (int i = 0; i < activeClipSet.Length; i++)
         {
-            FrameAnimationClip clip = clips[i];
+            FrameAnimationClip clip = activeClipSet[i];
             if (clip == null || string.IsNullOrWhiteSpace(clip.id))
             {
                 continue;
@@ -218,6 +245,150 @@ public class DogAnimation : MonoBehaviour
                 clipLookup.Add(clip.id, i);
             }
         }
+    }
+
+    private FrameAnimationClip[] GetActiveClipSet()
+    {
+        if (colorGroups == null || colorGroups.Length == 0)
+            return null;
+
+        if (selectedColorGroupIndex < 0 || selectedColorGroupIndex >= colorGroups.Length)
+            return null;
+
+        ColorGroup selectedGroup = colorGroups[selectedColorGroupIndex];
+        if (selectedGroup == null || selectedGroup.clips == null || selectedGroup.clips.Length == 0)
+            return null;
+
+        return selectedGroup.clips;
+    }
+
+    private void EnsureColorGroupSelected()
+    {
+        int[] validGroupIndices = GetValidGroupIndices();
+        if (validGroupIndices.Length == 0)
+        {
+            selectedColorGroupIndex = -1;
+            hasSelectedColorGroup = false;
+            return;
+        }
+
+        if (hasSelectedColorGroup && keepColorGroupOnReenable)
+            return;
+
+        int standardIndex = FindGroupIndexById("standard");
+        if (standardIndex >= 0)
+        {
+            selectedColorGroupIndex = standardIndex;
+        }
+        else
+        {
+            selectedColorGroupIndex = validGroupIndices[0];
+        }
+
+        hasSelectedColorGroup = true;
+    }
+
+    private int[] GetValidGroupIndices()
+    {
+        if (colorGroups == null)
+            return Array.Empty<int>();
+
+        List<int> valid = new List<int>();
+
+        for (int i = 0; i < colorGroups.Length; i++)
+        {
+            ColorGroup group = colorGroups[i];
+            if (group != null && group.clips != null && group.clips.Length > 0)
+                valid.Add(i);
+        }
+
+        return valid.ToArray();
+    }
+
+    private int FindGroupIndexById(string groupId)
+    {
+        if (colorGroups == null || string.IsNullOrWhiteSpace(groupId))
+            return -1;
+
+        string normalizedGroupId = groupId.Trim().ToLowerInvariant();
+
+        for (int i = 0; i < colorGroups.Length; i++)
+        {
+            ColorGroup group = colorGroups[i];
+            if (group == null || string.IsNullOrWhiteSpace(group.id))
+                continue;
+
+            if (group.id.Trim().ToLowerInvariant() == normalizedGroupId)
+                return i;
+        }
+
+        return -1;
+    }
+
+    private void MigrateLegacyClipsToStandardGroup()
+    {
+        if (clips == null || clips.Length == 0)
+            return;
+
+        if (colorGroups == null)
+            colorGroups = Array.Empty<ColorGroup>();
+
+        int standardIndex = FindGroupIndexById("standard");
+
+        if (standardIndex < 0)
+        {
+            ColorGroup standardGroup = new ColorGroup { id = "standard", clips = clips };
+            List<ColorGroup> expanded = new List<ColorGroup>(colorGroups);
+            expanded.Insert(0, standardGroup);
+            colorGroups = expanded.ToArray();
+        }
+        else
+        {
+            ColorGroup standardGroup = colorGroups[standardIndex];
+            if (standardGroup.clips == null || standardGroup.clips.Length == 0)
+            {
+                standardGroup.clips = clips;
+            }
+
+            colorGroups[standardIndex] = standardGroup;
+        }
+
+        clips = Array.Empty<FrameAnimationClip>();
+    }
+
+    public void SetColorGroupByIndex(int index)
+    {
+        if (colorGroups == null || index < 0 || index >= colorGroups.Length)
+            return;
+
+        ColorGroup group = colorGroups[index];
+        if (group == null || group.clips == null || group.clips.Length == 0)
+            return;
+
+        bool changed = selectedColorGroupIndex != index;
+        selectedColorGroupIndex = index;
+        hasSelectedColorGroup = true;
+
+        BuildLookup();
+
+        if (changed)
+            Play(initialClip, true);
+    }
+
+    public void SetColorGroupById(string groupId)
+    {
+        int index = FindGroupIndexById(groupId);
+        if (index >= 0)
+            SetColorGroupByIndex(index);
+    }
+
+    public string GetSelectedColorGroupId()
+    {
+        if (colorGroups == null || selectedColorGroupIndex < 0 || selectedColorGroupIndex >= colorGroups.Length)
+            return string.Empty;
+
+        ColorGroup group = colorGroups[selectedColorGroupIndex];
+        return group != null ? group.id : string.Empty;
     }
 
     private void UpdateStateFromGazeMovement()
@@ -333,6 +504,8 @@ public class DogAnimation : MonoBehaviour
 
     private void OnValidate()
     {
+        MigrateLegacyClipsToStandardGroup();
+
         if (clips == null)
         {
             return;

@@ -62,6 +62,12 @@ public class sheep_animation_etc : MonoBehaviour
     private SheepState lastSyncedState;
     private int selectedColorGroupIndex = -1;
     private bool hasSelectedColorGroup;
+    private Transform movementSource;
+    private Transform visualTransform;
+    private Vector3 lastMovementSourcePosition;
+    private bool hasLastMovementSourcePosition;
+    private Vector3 baseVisualLocalScale;
+    private bool hasBaseVisualLocalScale;
 
     // Works with both built-in and URP/HDRP shader property names.
     private static readonly int MainTexId = Shader.PropertyToID("_MainTex");
@@ -76,6 +82,8 @@ public class sheep_animation_etc : MonoBehaviour
             sheepController = GetComponentInParent<SheepController>();
 
         propertyBlock = new MaterialPropertyBlock();
+        visualTransform = targetRenderer != null ? targetRenderer.transform : transform;
+        CacheMovementSource();
         MigrateLegacyClipsToBrownGroup();
         EnsureColorGroupSelected();
         BuildLookup();
@@ -86,6 +94,8 @@ public class sheep_animation_etc : MonoBehaviour
         MigrateLegacyClipsToBrownGroup();
         EnsureColorGroupSelected();
         BuildLookup();
+        CacheMovementSource();
+        SetFacingRight(false);
 
         if (syncWithSheepController && sheepController != null)
         {
@@ -117,6 +127,11 @@ public class sheep_animation_etc : MonoBehaviour
             frameTimer -= frameDuration;
             AdvanceFrame();
         }
+    }
+
+    private void LateUpdate()
+    {
+        UpdateFacingFromMovement();
     }
 
     public bool Play(string clipId, bool restartIfSame = false)
@@ -188,6 +203,74 @@ public class sheep_animation_etc : MonoBehaviour
         propertyBlock.SetTexture(MainTexId, frame);
         propertyBlock.SetTexture(BaseMapId, frame);
         targetRenderer.SetPropertyBlock(propertyBlock);
+    }
+
+    private void CacheMovementSource()
+    {
+        if (sheepController != null)
+        {
+            movementSource = sheepController.transform;
+        }
+        else if (transform.parent != null)
+        {
+            movementSource = transform.parent;
+        }
+        else
+        {
+            movementSource = transform;
+        }
+
+        if (movementSource != null)
+        {
+            lastMovementSourcePosition = movementSource.position;
+            hasLastMovementSourcePosition = true;
+        }
+    }
+
+    private void UpdateFacingFromMovement()
+    {
+        if (visualTransform == null)
+            visualTransform = targetRenderer != null ? targetRenderer.transform : transform;
+
+        if (movementSource == null)
+            CacheMovementSource();
+
+        if (movementSource == null || visualTransform == null)
+            return;
+
+        if (!hasLastMovementSourcePosition)
+        {
+            lastMovementSourcePosition = movementSource.position;
+            hasLastMovementSourcePosition = true;
+            return;
+        }
+
+        Vector3 movementDelta = movementSource.position - lastMovementSourcePosition;
+        lastMovementSourcePosition = movementSource.position;
+
+        if (Mathf.Abs(movementDelta.x) < 0.0001f)
+            return;
+
+        SetFacingRight(movementDelta.x > 0f);
+    }
+
+    private void SetFacingRight(bool faceRight)
+    {
+        if (visualTransform == null)
+            visualTransform = targetRenderer != null ? targetRenderer.transform : transform;
+
+        if (visualTransform == null)
+            return;
+
+        if (!hasBaseVisualLocalScale)
+        {
+            baseVisualLocalScale = visualTransform.localScale;
+            hasBaseVisualLocalScale = true;
+        }
+
+        Vector3 mirroredScale = baseVisualLocalScale;
+        mirroredScale.x = Mathf.Abs(mirroredScale.x) * (faceRight ? -1f : 1f);
+        visualTransform.localScale = mirroredScale;
     }
 
     private void BuildLookup()
