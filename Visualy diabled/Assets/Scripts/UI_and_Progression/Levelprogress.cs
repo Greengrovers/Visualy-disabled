@@ -1,23 +1,36 @@
 using UnityEngine;
+using System.Collections;
 
 public class Levelprogress : MonoBehaviour
 {
     [SerializeField] private ProgressUI progressUI;
+    [SerializeField, Min(0.01f)] private float checkIntervalSeconds = 0.2f;
 
     private SheepGroupManager sheepGroupManager;
     private bool levelEnded = false;
+    private Coroutine progressCheckRoutine;
 
     private void Start()
     {
         ResolveReferences();
+
+        progressCheckRoutine = StartCoroutine(CheckProgressRoutine());
     }
 
-    private void Update()
+    private IEnumerator CheckProgressRoutine()
     {
-        if (levelEnded) return;
+        var wait = new WaitForSecondsRealtime(checkIntervalSeconds);
 
-        ResolveReferences();
+        while (!levelEnded)
+        {
+            ResolveReferences();
+            EvaluateLevelState();
+            yield return wait;
+        }
+    }
 
+    private void EvaluateLevelState()
+    {
         if (sheepGroupManager == null || sheepGroupManager.allSheep == null)
             return;
 
@@ -45,7 +58,6 @@ public class Levelprogress : MonoBehaviour
         if (sheepInGoal == livingSheepCount)
         {
             EndLevelWin();
-            return;
         }
     }
 
@@ -84,8 +96,6 @@ public class Levelprogress : MonoBehaviour
 
         if (progressUI != null)
             progressUI.ShowWinScreen();
-
-        Debug.Log("Level Won! All sheep reached the goal.");
     }
 
     private void EndLevelLose()
@@ -98,7 +108,14 @@ public class Levelprogress : MonoBehaviour
 
         if (progressUI != null)
             progressUI.ShowLoseScreen();
+    }
 
-        Debug.Log("Level Lost! All sheep are dead.");
+    private void OnDisable()
+    {
+        if (progressCheckRoutine != null)
+        {
+            StopCoroutine(progressCheckRoutine);
+            progressCheckRoutine = null;
+        }
     }
 }

@@ -63,6 +63,7 @@ public class SheepController : MonoBehaviour
 
     private Vector3 fleeFromPosition;
     private Vector3 lastFleeDirection;
+    private Vector3 lastKnownForwardOnPlane = Vector3.forward;
     private float slowMultiplier = 1f;
 
     private void OnEnable()
@@ -299,6 +300,7 @@ public class SheepController : MonoBehaviour
         RotateTowards(finalDirection);
 
         lastFleeDirection = finalDirection;
+        lastKnownForwardOnPlane = finalDirection;
     }
 
     void HandleRegroupMovement()
@@ -332,6 +334,7 @@ public class SheepController : MonoBehaviour
 
         transform.position += finalDirection * regroupSpeed * slowMultiplier * Time.deltaTime;
         RotateTowards(finalDirection);
+        lastKnownForwardOnPlane = finalDirection;
     }
 
     void HandleLuredMovement()
@@ -371,6 +374,7 @@ public class SheepController : MonoBehaviour
 
         transform.position += steeringDirection * luredSpeed * slowMultiplier * Time.deltaTime;
         RotateTowards(steeringDirection);
+        lastKnownForwardOnPlane = steeringDirection;
     }
 
     Vector3 FindSteeringDirection(Vector3 preferred)
@@ -529,7 +533,13 @@ public class SheepController : MonoBehaviour
 
     public Vector3 GetCurrentForwardOnPlane()
     {
-        Vector3 forward = transform.forward;
+        Vector3 forward = lastKnownForwardOnPlane;
+        forward.y = 0f;
+
+        if (forward.sqrMagnitude > 0.001f)
+            return forward.normalized;
+
+        forward = transform.forward;
         forward.y = 0f;
 
         return forward.sqrMagnitude > 0.001f ? forward.normalized : Vector3.zero;

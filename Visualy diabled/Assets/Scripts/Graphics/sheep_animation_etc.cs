@@ -68,6 +68,14 @@ public class sheep_animation_etc : MonoBehaviour
     private bool hasLastMovementSourcePosition;
     private Vector3 baseVisualLocalScale;
     private bool hasBaseVisualLocalScale;
+    private bool isFacingRight = true;
+    private int consecutiveHorizontalSamples;
+    private int lastHorizontalSampleSign;
+
+    [Header("Facing")]
+    [SerializeField, Min(0f)] private float facingDeadZone = 0.003f;
+    [SerializeField, Min(0f)] private float strongFacingFlipDelta = 0.04f;
+    [SerializeField, Min(1)] private int facingSamplesNeeded = 2;
 
     // Works with both built-in and URP/HDRP shader property names.
     private static readonly int MainTexId = Shader.PropertyToID("_MainTex");
@@ -96,6 +104,9 @@ public class sheep_animation_etc : MonoBehaviour
         BuildLookup();
         CacheMovementSource();
         SetFacingRight(false);
+        isFacingRight = false;
+        consecutiveHorizontalSamples = 0;
+        lastHorizontalSampleSign = 0;
 
         if (syncWithSheepController && sheepController != null)
         {
@@ -248,10 +259,40 @@ public class sheep_animation_etc : MonoBehaviour
         Vector3 movementDelta = movementSource.position - lastMovementSourcePosition;
         lastMovementSourcePosition = movementSource.position;
 
-        if (Mathf.Abs(movementDelta.x) < 0.0001f)
+        float horizontalDelta = movementDelta.x;
+        if (Mathf.Abs(horizontalDelta) < facingDeadZone)
             return;
 
-        SetFacingRight(movementDelta.x > 0f);
+        int sampleSign = horizontalDelta > 0f ? 1 : -1;
+
+        float absoluteDelta = Mathf.Abs(horizontalDelta);
+
+        if ((sampleSign > 0) != isFacingRight && absoluteDelta >= strongFacingFlipDelta)
+        {
+            SetFacingRight(sampleSign > 0);
+            consecutiveHorizontalSamples = 0;
+            lastHorizontalSampleSign = 0;
+            return;
+        }
+
+        if (sampleSign == lastHorizontalSampleSign)
+            consecutiveHorizontalSamples++;
+        else
+        {
+            lastHorizontalSampleSign = sampleSign;
+            consecutiveHorizontalSamples = 1;
+        }
+
+        if ((sampleSign > 0) == isFacingRight)
+            return;
+
+        if (consecutiveHorizontalSamples < facingSamplesNeeded)
+            return;
+
+        SetFacingRight(sampleSign > 0);
+        isFacingRight = sampleSign > 0;
+        consecutiveHorizontalSamples = 0;
+        lastHorizontalSampleSign = 0;
     }
 
     private void SetFacingRight(bool faceRight)
@@ -271,6 +312,7 @@ public class sheep_animation_etc : MonoBehaviour
         Vector3 mirroredScale = baseVisualLocalScale;
         mirroredScale.x = Mathf.Abs(mirroredScale.x) * (faceRight ? -1f : 1f);
         visualTransform.localScale = mirroredScale;
+        isFacingRight = faceRight;
     }
 
     private void BuildLookup()

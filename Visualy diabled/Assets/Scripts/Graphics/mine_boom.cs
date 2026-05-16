@@ -25,6 +25,9 @@ public class mine_boom : MonoBehaviour
     private int currentFrame;
     private float frameTimer;
     private bool isPlaying;
+    private Vector3 baseScale;
+    private Vector3 baseLocalPosition;
+    private bool hasBaseScale;
 
     private static readonly int MainTexId = Shader.PropertyToID("_MainTex");
     private static readonly int BaseMapId = Shader.PropertyToID("_BaseMap");
@@ -37,6 +40,9 @@ public class mine_boom : MonoBehaviour
     }
 
     propertyBlock = new MaterialPropertyBlock();
+    baseScale = transform.localScale;
+    baseLocalPosition = transform.localPosition;
+    hasBaseScale = true;
 }
 
     private void Start()
@@ -76,6 +82,8 @@ public class mine_boom : MonoBehaviour
             targetRenderer.enabled = true;
         }
 
+        SetExplosionScale(true);
+
         currentFrame = 0;
         frameTimer = 0f;
         isPlaying = true;
@@ -102,6 +110,8 @@ public class mine_boom : MonoBehaviour
                     targetRenderer.enabled = false;
                 }
 
+                SetExplosionScale(false);
+
                 if (destroyAfterAnimation)
                 {
                     Destroy(gameObject);
@@ -126,5 +136,26 @@ public class mine_boom : MonoBehaviour
         propertyBlock.SetTexture(MainTexId, explosionClip.frames[frameIndex]);
         propertyBlock.SetTexture(BaseMapId, explosionClip.frames[frameIndex]);
         targetRenderer.SetPropertyBlock(propertyBlock);
+    }
+
+    private void SetExplosionScale(bool active)
+    {
+        if (!hasBaseScale)
+        {
+            baseScale = transform.localScale;
+            baseLocalPosition = transform.localPosition;
+            hasBaseScale = true;
+        }
+
+        if (active)
+        {
+            transform.localScale = baseScale * 5f;
+            transform.localPosition = baseLocalPosition + Vector3.forward * (baseScale.z * 2f);
+        }
+        else
+        {
+            transform.localScale = baseScale;
+            transform.localPosition = baseLocalPosition;
+        }
     }
 }

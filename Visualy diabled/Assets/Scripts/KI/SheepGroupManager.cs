@@ -23,6 +23,8 @@ public class SheepGroupManager : MonoBehaviour
         }
 
         Instance = this;
+
+        RegisterExistingSheepInScene();
     }
 
     private void OnDestroy()
@@ -91,5 +93,18 @@ public class SheepGroupManager : MonoBehaviour
         }
 
         return result;
+    }
+
+    private void RegisterExistingSheepInScene()
+    {
+        SheepController[] sceneSheep = FindObjectsByType<SheepController>(FindObjectsSortMode.None);
+
+        foreach (SheepController sheep in sceneSheep)
+        {
+            if (sheep == null)
+                continue;
+
+            RegisterSheep(sheep);
+        }
     }
 }
